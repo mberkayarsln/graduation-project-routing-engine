@@ -392,6 +392,9 @@ class VisualizationService:
     
     def create_all_maps(self, clusters, zones=None, barrier_roads=None):
         """Create all map visualizations."""
+        import os
+        os.makedirs(self.config.OUTPUT_DIR, exist_ok=True)
+        
         files = []
         all_employees = []
         for cluster in clusters:
