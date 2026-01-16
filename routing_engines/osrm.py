@@ -117,3 +117,65 @@ class OSRMRouter:
         except Exception as e:
             print(f"OSRM Matrix API error: {e}")
             return None
+    
+    def snap_to_road(self, lat, lon, profile='driving'):
+        """
+        Snap a coordinate to the nearest point on the road network.
+        
+        Args:
+            lat: Latitude
+            lon: Longitude
+            profile: Routing profile ('driving', 'walking', 'cycling')
+        
+        Returns:
+            Dict with 'lat', 'lon', 'distance' (meters to snapped point), 'name' (road name)
+            or None if snapping failed
+        """
+        url = f"{self.base_url}/nearest/v1/{profile}/{lon},{lat}"
+        
+        params = {
+            'number': 1  # Return only the nearest point
+        }
+        
+        try:
+            response = requests.get(url, params=params, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            
+            if data.get('code') != 'Ok' or not data.get('waypoints'):
+                return None
+            
+            waypoint = data['waypoints'][0]
+            snapped_lon, snapped_lat = waypoint['location']
+            
+            return {
+                'lat': snapped_lat,
+                'lon': snapped_lon,
+                'distance': waypoint.get('distance', 0),
+                'name': waypoint.get('name', '')
+            }
+            
+        except requests.exceptions.RequestException as e:
+            print(f"OSRM Nearest API error: {e}")
+            return None
+    
+    def snap_points_to_road(self, points, profile='driving'):
+        """
+        Snap multiple coordinates to the nearest roads.
+        
+        Args:
+            points: List of (lat, lon) tuples
+            profile: Routing profile
+        
+        Returns:
+            List of (lat, lon) tuples snapped to roads
+        """
+        snapped = []
+        for lat, lon in points:
+            result = self.snap_to_road(lat, lon, profile)
+            if result:
+                snapped.append((result['lat'], result['lon']))
+            else:
+                # Fallback to original if snapping fails
+                snapped.append((lat, lon))
+        return snapped

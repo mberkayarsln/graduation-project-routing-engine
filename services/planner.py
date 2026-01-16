@@ -91,7 +91,16 @@ class ServicePlanner:
             )
             print(f"    OK: {len(self.clusters)} clusters created")
         
+        # Snap cluster centers to roads
+        self.snap_cluster_centers()
+        
         return self.clusters
+    
+    def snap_cluster_centers(self):
+        """Snap cluster centers to the nearest roads."""
+        print(f"[2c] Snapping cluster centers to roads...")
+        snapped = self.clustering_service.snap_centers_to_roads(self.clusters)
+        print(f"    OK: {snapped}/{len(self.clusters)} cluster centers snapped to roads")
     
     def filter_employees_by_distance(self):
         """Filter out employees too far from cluster centers."""

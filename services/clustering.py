@@ -143,3 +143,38 @@ class ClusteringService:
             return None
         
         return self.clusterer.get_stats()
+    
+    def snap_centers_to_roads(self, clusters):
+        """
+        Snap cluster centers to the nearest roads using OSRM.
+        
+        Args:
+            clusters: List of Cluster objects
+            
+        Returns:
+            Number of centers successfully snapped
+        """
+        from routing_engines.osrm import OSRMRouter
+        router = OSRMRouter()
+        
+        snapped_count = 0
+        for cluster in clusters:
+            original_center = cluster.center
+            result = router.snap_to_road(original_center[0], original_center[1])
+            
+            if result:
+                new_center = (result['lat'], result['lon'])
+                cluster.center = new_center
+                cluster.original_center = original_center  # Store original for reference
+                snapped_count += 1
+                
+                if result['name']:
+                    print(f"   Cluster {cluster.id}: snapped to '{result['name']}' "
+                          f"({result['distance']:.0f}m from centroid)")
+                else:
+                    print(f"   Cluster {cluster.id}: snapped to road "
+                          f"({result['distance']:.0f}m from centroid)")
+            else:
+                print(f"   Cluster {cluster.id}: could not snap (keeping centroid)")
+        
+        return snapped_count
