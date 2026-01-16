@@ -29,4 +29,8 @@ class Config:
     OSM_FILE = "data/istanbul-center.osm.pbf"
     BARRIER_ROAD_TYPES = ["motorway", "motorway_link", "trunk", "trunk_link", "primary"]
     EMPLOYEES_PER_CLUSTER = 17  # Maximum employees per cluster
+    
+    # Vehicle settings
+    VEHICLE_CAPACITY = 17  # Maximum passengers per vehicle
+    VEHICLE_TYPE = "Minibus"
 

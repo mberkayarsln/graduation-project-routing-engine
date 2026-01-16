@@ -94,6 +94,9 @@ class ServicePlanner:
         # Snap cluster centers to roads
         self.snap_cluster_centers()
         
+        # Enforce capacity constraints
+        self.enforce_capacity()
+        
         return self.clusters
     
     def snap_cluster_centers(self):
@@ -101,6 +104,33 @@ class ServicePlanner:
         print(f"[2c] Snapping cluster centers to roads...")
         snapped = self.clustering_service.snap_centers_to_roads(self.clusters)
         print(f"    OK: {snapped}/{len(self.clusters)} cluster centers snapped to roads")
+    
+    def enforce_capacity(self):
+        """Enforce vehicle capacity constraints on clusters."""
+        vehicle_capacity = getattr(self.config, 'VEHICLE_CAPACITY', 50)
+        print(f"[2d] Enforcing capacity constraints (max {vehicle_capacity} per vehicle)...")
+        
+        # Check if any cluster exceeds capacity
+        is_valid, violations = self.clustering_service.validate_capacity(
+            self.clusters, vehicle_capacity
+        )
+        
+        if is_valid:
+            print(f"    OK: All {len(self.clusters)} clusters within capacity")
+        else:
+            print(f"    {len(violations)} clusters exceed capacity, splitting...")
+            original_count = len(self.clusters)
+            self.clusters = self.clustering_service.enforce_capacity_constraints(
+                self.clusters, vehicle_capacity
+            )
+            
+            # Re-snap any new cluster centers
+            new_clusters = [c for c in self.clusters if c.id >= original_count]
+            if new_clusters:
+                print(f"    Snapping {len(new_clusters)} new cluster centers to roads...")
+                self.clustering_service.snap_centers_to_roads(new_clusters)
+            
+            print(f"    OK: {len(self.clusters)} clusters after capacity enforcement")
     
     def filter_employees_by_distance(self):
         """Filter out employees too far from cluster centers."""
@@ -203,14 +233,17 @@ class ServicePlanner:
     
     def assign_vehicles(self):
         """Assign vehicles to clusters."""
-        print(f"Assigning vehicles...")
+        vehicle_capacity = getattr(self.config, 'VEHICLE_CAPACITY', 50)
+        vehicle_type = getattr(self.config, 'VEHICLE_TYPE', 'Minibus')
+        
+        print(f"[7] Assigning vehicles (capacity: {vehicle_capacity})...")
         
         self.vehicles = []
         for i, cluster in enumerate(self.clusters):
             vehicle = Vehicle(
                 id=i + 1,
-                capacity=50,
-                vehicle_type="Minibus"
+                capacity=vehicle_capacity,
+                vehicle_type=vehicle_type
             )
             vehicle.assign_cluster(cluster)
             vehicle.set_departure_time(self.get_departure_time())

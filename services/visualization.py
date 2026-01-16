@@ -111,6 +111,9 @@ class VisualizationService:
         """Create a map showing optimized routes for all clusters."""
         filename = "maps/optimized_routes.html"
         
+        # Create a lookup dict for clusters by ID
+        cluster_lookup = {c.id: c for c in clusters}
+        
         routes_dict = {}
         for cluster in clusters:
             if cluster.route:
@@ -128,7 +131,7 @@ class VisualizationService:
         ).add_to(m)
         
         for cluster_id, route in routes_dict.items():
-            cluster = clusters[int(cluster_id)]
+            cluster = cluster_lookup[cluster_id]
             color = self._get_cluster_color(int(cluster_id))
             
             # Draw route polyline

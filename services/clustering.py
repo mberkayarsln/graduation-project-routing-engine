@@ -178,3 +178,116 @@ class ClusteringService:
                 print(f"   Cluster {cluster.id}: could not snap (keeping centroid)")
         
         return snapped_count
+    
+    def enforce_capacity_constraints(self, clusters, vehicle_capacity):
+        """
+        Split clusters that exceed vehicle capacity.
+        
+        Args:
+            clusters: List of Cluster objects
+            vehicle_capacity: Maximum employees per vehicle
+            
+        Returns:
+            New list of clusters with capacity constraints enforced
+        """
+        import math
+        
+        new_clusters = []
+        next_id = max(c.id for c in clusters) + 1
+        splits_count = 0
+        
+        for cluster in clusters:
+            active_count = cluster.get_employee_count(include_excluded=False)
+            
+            if active_count <= vehicle_capacity:
+                # Cluster is within capacity
+                new_clusters.append(cluster)
+            else:
+                # Need to split this cluster
+                n_splits = math.ceil(active_count / vehicle_capacity)
+                splits_count += 1
+                
+                print(f"   Cluster {cluster.id}: {active_count} employees exceeds capacity {vehicle_capacity}, "
+                      f"splitting into {n_splits} sub-clusters")
+                
+                active_employees = cluster.get_active_employees()
+                
+                if n_splits >= len(active_employees):
+                    # Edge case: more splits than employees, just use one per cluster
+                    for emp in active_employees:
+                        sub_cluster = Cluster(id=next_id, center=(emp.lat, emp.lon))
+                        sub_cluster.zone_id = getattr(cluster, 'zone_id', None)
+                        sub_cluster.add_employee(emp)
+                        new_clusters.append(sub_cluster)
+                        next_id += 1
+                else:
+                    # Sub-cluster using KMeans
+                    sub_clusterer = KMeansClusterer(
+                        n_clusters=n_splits,
+                        random_state=42
+                    )
+                    coordinates = np.array([[emp.lat, emp.lon] for emp in active_employees])
+                    sub_clusterer.fit(coordinates)
+                    
+                    # Create sub-clusters
+                    sub_clusters = []
+                    for i in range(n_splits):
+                        center = tuple(sub_clusterer.cluster_centers_[i])
+                        sub_cluster = Cluster(id=next_id, center=center)
+                        sub_cluster.zone_id = getattr(cluster, 'zone_id', None)
+                        sub_cluster.parent_cluster_id = cluster.id
+                        sub_clusters.append(sub_cluster)
+                        next_id += 1
+                    
+                    # Assign employees to sub-clusters
+                    for emp, label in zip(active_employees, sub_clusterer.labels_):
+                        sub_clusters[label].add_employee(emp)
+                    
+                    # Also add excluded employees to the nearest sub-cluster
+                    excluded_employees = [e for e in cluster.employees if e.excluded]
+                    for emp in excluded_employees:
+                        # Find nearest sub-cluster center
+                        min_dist = float('inf')
+                        nearest_sub = sub_clusters[0]
+                        for sc in sub_clusters:
+                            dist = emp.distance_to(sc.center[0], sc.center[1])
+                            if dist < min_dist:
+                                min_dist = dist
+                                nearest_sub = sc
+                        nearest_sub.add_employee(emp)
+                    
+                    new_clusters.extend(sub_clusters)
+                    
+                    for sc in sub_clusters:
+                        print(f"      → Sub-cluster {sc.id}: {sc.get_employee_count(include_excluded=False)} employees")
+        
+        if splits_count > 0:
+            print(f"   Capacity enforcement: {splits_count} clusters split, "
+                  f"{len(new_clusters)} total clusters")
+        
+        return new_clusters
+    
+    def validate_capacity(self, clusters, vehicle_capacity):
+        """
+        Validate that all clusters are within vehicle capacity.
+        
+        Args:
+            clusters: List of Cluster objects
+            vehicle_capacity: Maximum employees per vehicle
+            
+        Returns:
+            Tuple of (is_valid, list of violations)
+        """
+        violations = []
+        
+        for cluster in clusters:
+            active_count = cluster.get_employee_count(include_excluded=False)
+            if active_count > vehicle_capacity:
+                violations.append({
+                    'cluster_id': cluster.id,
+                    'employee_count': active_count,
+                    'capacity': vehicle_capacity,
+                    'excess': active_count - vehicle_capacity
+                })
+        
+        return len(violations) == 0, violations
