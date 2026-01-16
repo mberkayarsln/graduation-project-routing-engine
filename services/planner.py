@@ -3,6 +3,7 @@ from services.location import LocationService
 from services.clustering import ClusteringService
 from services.routing import RoutingService
 from services.visualization import VisualizationService
+from services.zone_service import ZoneService
 from core.vehicle import Vehicle
 from datetime import datetime, timedelta
 
@@ -23,9 +24,11 @@ class ServicePlanner:
         self.clustering_service = ClusteringService(config)
         self.routing_service = RoutingService(config)
         self.visualization_service = VisualizationService(config)
+        self.zone_service = ZoneService(config) if getattr(config, 'USE_ZONE_PARTITIONING', False) else None
         
         # State
         self.stats = {}
+        self.zone_assignments = {}
         self.safe_stops = []
     
     @staticmethod
@@ -47,19 +50,87 @@ class ServicePlanner:
         
         return self.employees
     
+    def create_zones(self):
+        """Create walkable zones based on road barriers."""
+        if not self.zone_service:
+            print("[2a] Zone partitioning (DISABLED)...")
+            return {}
+        
+        print("[2a] Creating zones from road barriers...")
+        self.zone_service.load_barrier_roads()
+        self.zone_service.create_zones(self.employees)
+        self.zone_assignments = self.zone_service.assign_employees_to_zones(self.employees)
+        
+        stats = self.zone_service.get_zone_stats()
+        print(f"    OK: {stats['total_zones']} zones created, {len(self.zone_assignments)} non-empty")
+        
+        return self.zone_assignments
+    
     def create_clusters(self, num_clusters=None):
         """Cluster employees into groups."""
-        num_clusters = num_clusters or self.config.NUM_CLUSTERS
+        # Use zone-aware clustering if zones are available
+        if self.zone_assignments:
+            employees_per_cluster = getattr(self.config, 'EMPLOYEES_PER_CLUSTER', 20)
+            print(f"[2b] Creating zone-aware clusters (~{employees_per_cluster} employees each)...")
+            
+            self.clusters = self.clustering_service.cluster_by_zones(
+                self.zone_assignments,
+                employees_per_cluster=employees_per_cluster,
+                random_state=42
+            )
+            print(f"    OK: {len(self.clusters)} clusters created across {len(self.zone_assignments)} zones")
+        else:
+            # Fallback to traditional clustering
+            num_clusters = num_clusters or self.config.NUM_CLUSTERS
+            print(f"[2b] Creating {num_clusters} clusters...")
+            
+            self.clusters = self.clustering_service.cluster_employees(
+                self.employees,
+                num_clusters,
+                random_state=42
+            )
+            print(f"    OK: {len(self.clusters)} clusters created")
         
-        print(f"[2] Creating {num_clusters} clusters...")
-        self.clusters = self.clustering_service.cluster_employees(
-            self.employees,
-            num_clusters,
-            random_state=42
-        )
-        print(f"    OK: {len(self.clusters)} clusters created")
+        # Snap cluster centers to roads
+        self.snap_cluster_centers()
+        
+        # Enforce capacity constraints
+        self.enforce_capacity()
         
         return self.clusters
+    
+    def snap_cluster_centers(self):
+        """Snap cluster centers to the nearest roads."""
+        print(f"[2c] Snapping cluster centers to roads...")
+        snapped = self.clustering_service.snap_centers_to_roads(self.clusters)
+        print(f"    OK: {snapped}/{len(self.clusters)} cluster centers snapped to roads")
+    
+    def enforce_capacity(self):
+        """Enforce vehicle capacity constraints on clusters."""
+        vehicle_capacity = getattr(self.config, 'VEHICLE_CAPACITY', 50)
+        print(f"[2d] Enforcing capacity constraints (max {vehicle_capacity} per vehicle)...")
+        
+        # Check if any cluster exceeds capacity
+        is_valid, violations = self.clustering_service.validate_capacity(
+            self.clusters, vehicle_capacity
+        )
+        
+        if is_valid:
+            print(f"    OK: All {len(self.clusters)} clusters within capacity")
+        else:
+            print(f"    {len(violations)} clusters exceed capacity, splitting...")
+            original_count = len(self.clusters)
+            self.clusters = self.clustering_service.enforce_capacity_constraints(
+                self.clusters, vehicle_capacity
+            )
+            
+            # Re-snap any new cluster centers
+            new_clusters = [c for c in self.clusters if c.id >= original_count]
+            if new_clusters:
+                print(f"    Snapping {len(new_clusters)} new cluster centers to roads...")
+                self.clustering_service.snap_centers_to_roads(new_clusters)
+            
+            print(f"    OK: {len(self.clusters)} clusters after capacity enforcement")
     
     def filter_employees_by_distance(self):
         """Filter out employees too far from cluster centers."""
@@ -162,14 +233,17 @@ class ServicePlanner:
     
     def assign_vehicles(self):
         """Assign vehicles to clusters."""
-        print(f"Assigning vehicles...")
+        vehicle_capacity = getattr(self.config, 'VEHICLE_CAPACITY', 50)
+        vehicle_type = getattr(self.config, 'VEHICLE_TYPE', 'Minibus')
+        
+        print(f"[7] Assigning vehicles (capacity: {vehicle_capacity})...")
         
         self.vehicles = []
         for i, cluster in enumerate(self.clusters):
             vehicle = Vehicle(
                 id=i + 1,
-                capacity=50,
-                vehicle_type="Minibus"
+                capacity=vehicle_capacity,
+                vehicle_type=vehicle_type
             )
             vehicle.assign_cluster(cluster)
             vehicle.set_departure_time(self.get_departure_time())
@@ -184,14 +258,29 @@ class ServicePlanner:
         """Generate HTML map visualizations."""
         print(f"[6] Generating maps...")
         
-        files = self.visualization_service.create_all_maps(self.clusters)
+        # Get zone data if available
+        zones = None
+        barrier_roads = None
+        if self.zone_service:
+            zones = self.zone_service.get_zones()
+            barrier_roads = self.zone_service.get_barrier_roads()
+        
+        files = self.visualization_service.create_all_maps(
+            self.clusters, 
+            zones=zones, 
+            barrier_roads=barrier_roads
+        )
         
         print(f"    OK: {files[0]} (employees)")
         print(f"    OK: {files[1]} (clusters)")
         print(f"    OK: {files[2]} (routes)")
         
-        if len(files) > 3:
-            print(f"    OK: {len(files) - 3} detailed cluster maps created")
+        if zones:
+            print(f"    OK: maps/zones.html (zone boundaries)")
+        
+        if len(files) > 3 + (1 if zones else 0):
+            detail_count = len(files) - 3 - (1 if zones else 0)
+            print(f"    OK: {detail_count} detailed cluster maps created")
         
         return files
     
@@ -250,6 +339,7 @@ class ServicePlanner:
         print(f"    OK: {len(self.safe_stops)} safe stops loaded from OSM")
         
         self.generate_employees()
+        self.create_zones()
         self.create_clusters()
         self.filter_employees_by_distance()
         self.generate_stops()

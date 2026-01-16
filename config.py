@@ -7,7 +7,7 @@ class Config:
     
     OFFICE_LOCATION = (41.1097, 29.0204)
     
-    NUM_EMPLOYEES = 500
+    NUM_EMPLOYEES = 200
     NUM_CLUSTERS = 25
     MAX_DISTANCE_FROM_CENTER = None
     
@@ -23,3 +23,14 @@ class Config:
     MAP_CLUSTERS = f"{OUTPUT_DIR}/clusters.html"
     MAP_ROUTES = f"{OUTPUT_DIR}/optimized_routes.html"
     MAP_CLUSTER_DETAIL = f"{OUTPUT_DIR}/cluster_0_detail.html"
+    
+    # Zone partitioning settings
+    USE_ZONE_PARTITIONING = True
+    OSM_FILE = "data/istanbul-center.osm.pbf"
+    BARRIER_ROAD_TYPES = ["motorway", "motorway_link", "trunk", "trunk_link", "primary"]
+    EMPLOYEES_PER_CLUSTER = 17  # Maximum employees per cluster
+    
+    # Vehicle settings
+    VEHICLE_CAPACITY = 17  # Maximum passengers per vehicle
+    VEHICLE_TYPE = "Minibus"
+

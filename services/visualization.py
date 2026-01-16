@@ -111,6 +111,9 @@ class VisualizationService:
         """Create a map showing optimized routes for all clusters."""
         filename = "maps/optimized_routes.html"
         
+        # Create a lookup dict for clusters by ID
+        cluster_lookup = {c.id: c for c in clusters}
+        
         routes_dict = {}
         for cluster in clusters:
             if cluster.route:
@@ -128,7 +131,7 @@ class VisualizationService:
         ).add_to(m)
         
         for cluster_id, route in routes_dict.items():
-            cluster = clusters[int(cluster_id)]
+            cluster = cluster_lookup[cluster_id]
             color = self._get_cluster_color(int(cluster_id))
             
             # Draw route polyline
@@ -307,8 +310,94 @@ class VisualizationService:
         m.save(filename)
         return filename
     
-    def create_all_maps(self, clusters):
+    def create_zones_map(self, clusters, zones=None, barrier_roads=None):
+        """Create a map showing zone boundaries with clusters."""
+        filename = "maps/zones.html"
+        
+        all_employees = []
+        for cluster in clusters:
+            all_employees.extend(cluster.employees)
+        
+        if not all_employees:
+            return filename
+        
+        avg_lat = sum(emp.lat for emp in all_employees) / len(all_employees)
+        avg_lon = sum(emp.lon for emp in all_employees) / len(all_employees)
+        
+        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+        
+        # Office marker
+        folium.Marker(
+            location=self.office_location,
+            popup="<b>Office</b>",
+            icon=folium.Icon(color='red', icon='home', prefix='fa')
+        ).add_to(m)
+        
+        # Draw zone boundaries
+        if zones:
+            for zone_id, zone_polygon in enumerate(zones):
+                try:
+                    if hasattr(zone_polygon, 'exterior'):
+                        coords = [[c[1], c[0]] for c in zone_polygon.exterior.coords]
+                        folium.Polygon(
+                            locations=coords,
+                            color='#333333',
+                            weight=2,
+                            fill=True,
+                            fill_opacity=0.1,
+                            popup=f"<b>Zone {zone_id}</b>"
+                        ).add_to(m)
+                except Exception:
+                    pass
+        
+        # Draw barrier roads
+        if barrier_roads:
+            try:
+                from shapely.geometry import MultiLineString, LineString
+                if isinstance(barrier_roads, MultiLineString):
+                    for line in barrier_roads.geoms:
+                        coords = [[c[1], c[0]] for c in line.coords]
+                        folium.PolyLine(
+                            locations=coords,
+                            color='#dc2626',
+                            weight=4,
+                            opacity=0.8,
+                            popup="Barrier Road"
+                        ).add_to(m)
+                elif isinstance(barrier_roads, LineString):
+                    coords = [[c[1], c[0]] for c in barrier_roads.coords]
+                    folium.PolyLine(
+                        locations=coords,
+                        color='#dc2626',
+                        weight=4,
+                        opacity=0.8,
+                        popup="Barrier Road"
+                    ).add_to(m)
+            except Exception:
+                pass
+        
+        # Draw employees colored by zone
+        for emp in all_employees:
+            zone_id = getattr(emp, 'zone_id', 0)
+            color = self._get_cluster_color(zone_id * 10)  # Different color space for zones
+            
+            folium.CircleMarker(
+                location=[emp.lat, emp.lon],
+                radius=4,
+                color=color,
+                fill=True,
+                fill_opacity=0.6,
+                popup=f"<b>ID:</b> {emp.id}<br><b>Zone:</b> {zone_id}<br><b>Cluster:</b> {emp.cluster_id}"
+            ).add_to(m)
+        
+        m.save(filename)
+        return filename
+    
+    def create_all_maps(self, clusters, zones=None, barrier_roads=None):
         """Create all map visualizations."""
+        import os
+        os.makedirs(self.config.OUTPUT_DIR, exist_ok=True)
+        
         files = []
         all_employees = []
         for cluster in clusters:
@@ -318,8 +407,12 @@ class VisualizationService:
         files.append(self.create_clusters_map(clusters))
         files.append(self.create_routes_map(clusters))
         
+        if zones or barrier_roads:
+            files.append(self.create_zones_map(clusters, zones, barrier_roads))
+        
         for cluster in clusters:
             detail_file = self.create_cluster_detail_map(cluster)
             files.append(detail_file)
         
         return files
+
