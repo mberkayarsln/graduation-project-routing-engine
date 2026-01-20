@@ -58,20 +58,6 @@ class APICache:
         
         self.cache[key] = cache_data
         self._save_cache()
-    
-    def get_stats(self):
-        """Return cache statistics."""
-        return {
-            'total_entries': len(self.cache),
-            'cache_file': self.cache_file,
-            'file_size_kb': os.path.getsize(self.cache_file) / 1024 if os.path.exists(self.cache_file) else 0
-        }
-    
-    def clear(self):
-        """Clear all cached data."""
-        self.cache = {}
-        self._save_cache()
-        print("Cache cleared!")
 
     def _generate_matrix_key(self, origins, destinations, profile):
         """Generate cache key for distance matrix."""

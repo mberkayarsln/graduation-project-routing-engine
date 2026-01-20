@@ -19,11 +19,6 @@ class Cluster:
         self.employees.append(employee)
         employee.cluster_id = self.id
     
-    def remove_employee(self, employee):
-        """Remove an employee from this cluster."""
-        if employee in self.employees:
-            self.employees.remove(employee)
-            employee.cluster_id = None
     
     def filter_by_distance(self, max_distance):
         """Exclude employees who are too far from the cluster center."""

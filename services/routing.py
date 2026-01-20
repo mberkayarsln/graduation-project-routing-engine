@@ -48,14 +48,3 @@ class RoutingService:
         cluster.assign_route(route)
         
         return route
-    
-    def optimize_all_clusters(self, clusters):
-        """Optimize routes for all clusters using OSRM."""
-        routes = []
-        
-        for cluster in clusters:
-            route = self.optimize_cluster_route(cluster=cluster)
-            if route:
-                routes.append(route)
-        
-        return routes

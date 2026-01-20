@@ -7,8 +7,8 @@ class Config:
     
     OFFICE_LOCATION = (41.1097, 29.0204)
     
-    NUM_EMPLOYEES = 200
-    NUM_CLUSTERS = 25
+    NUM_EMPLOYEES = 500
+    NUM_CLUSTERS = 40
     MAX_DISTANCE_FROM_CENTER = None
     
     EMPLOYEES_PER_STOP = 2
@@ -29,6 +29,7 @@ class Config:
     OSM_FILE = "data/istanbul-center.osm.pbf"
     BARRIER_ROAD_TYPES = ["motorway", "motorway_link", "trunk", "trunk_link", "primary"]
     EMPLOYEES_PER_CLUSTER = 17  # Maximum employees per cluster
+    MIN_EMPLOYEES_FOR_SHUTTLE = 10  # Minimum employees per cluster to get shuttle service
     
     # Vehicle settings
     VEHICLE_CAPACITY = 17  # Maximum passengers per vehicle

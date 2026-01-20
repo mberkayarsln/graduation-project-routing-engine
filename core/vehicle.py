@@ -23,9 +23,6 @@ class Vehicle:
         """Set the departure time."""
         self.departure_time = departure_time
     
-    def set_driver(self, driver_name):
-        """Set the driver name."""
-        self.driver_name = driver_name
     
     def can_accommodate(self, employee_count):
         """Check if vehicle can accommodate given number of employees."""

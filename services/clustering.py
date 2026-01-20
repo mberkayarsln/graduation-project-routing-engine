@@ -52,18 +52,6 @@ class ClusteringService:
         
         return clusters
     
-    def find_optimal_clusters(self, employees, max_clusters=15):
-        """Find optimal number of clusters using elbow method."""
-        coordinates = np.array([[emp.lat, emp.lon] for emp in employees])
-        
-        inertias = []
-        for k in range(1, min(max_clusters + 1, len(employees))):
-            clusterer = KMeansClusterer(n_clusters=k, random_state=42)
-            clusterer.fit(coordinates)
-            inertias.append(clusterer.inertia_)
-        
-        # TODO: Implement elbow detection
-        return self.config.NUM_CLUSTERS
     
     def cluster_by_zones(self, zone_assignments, employees_per_cluster=20, random_state=None):
         """
@@ -137,12 +125,6 @@ class ClusteringService:
         
         return clusters
     
-    def get_clustering_stats(self):
-        """Return clustering statistics."""
-        if self.clusterer is None:
-            return None
-        
-        return self.clusterer.get_stats()
     
     def snap_centers_to_roads(self, clusters):
         """

@@ -158,24 +158,3 @@ class OSRMRouter:
         except requests.exceptions.RequestException as e:
             print(f"OSRM Nearest API error: {e}")
             return None
-    
-    def snap_points_to_road(self, points, profile='driving'):
-        """
-        Snap multiple coordinates to the nearest roads.
-        
-        Args:
-            points: List of (lat, lon) tuples
-            profile: Routing profile
-        
-        Returns:
-            List of (lat, lon) tuples snapped to roads
-        """
-        snapped = []
-        for lat, lon in points:
-            result = self.snap_to_road(lat, lon, profile)
-            if result:
-                snapped.append((result['lat'], result['lon']))
-            else:
-                # Fallback to original if snapping fails
-                snapped.append((lat, lon))
-        return snapped

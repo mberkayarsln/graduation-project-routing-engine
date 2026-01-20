@@ -2,7 +2,6 @@
 import numpy as np
 import pandas as pd
 from shapely.geometry import Point
-import folium
 from pyrosm import OSM
 
 
@@ -95,26 +94,3 @@ class DataGenerator:
         })
         
         return df
-    
-    def generate_and_save_map(self, n=100, seed=42, output_file="maps/generated_points.html"):
-        """Generate employees and save visualization map."""
-        df = self.generate(n, seed)
-        
-        m = folium.Map(
-            location=[df['lat'].mean(), df['lon'].mean()], 
-            zoom_start=12
-        )
-        
-        for _, row in df.iterrows():
-            folium.CircleMarker(
-                location=[row['lat'], row['lon']],
-                radius=3,
-                color="#2563eb",
-                fill=True,
-                fill_opacity=0.9,
-                popup=f"Employee {row['id']}"
-            ).add_to(m)
-        
-        m.save(output_file)
-        
-        return df, output_file

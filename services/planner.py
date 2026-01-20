@@ -199,11 +199,20 @@ class ServicePlanner:
     def optimize_routes(self, use_stops=True):
         """Optimize routes for all clusters using OSRM."""
         mode = "stops" if use_stops else "employee locations"
-        print(f"[5] Creating routes ({mode})...")
+        min_employees = getattr(self.config, 'MIN_EMPLOYEES_FOR_SHUTTLE', 10)
+        print(f"[5] Creating routes ({mode}, min {min_employees} employees for shuttle)...")
         
         routes = []
+        skipped_clusters = 0
         
         for cluster in self.clusters:
+            # Skip clusters with fewer than minimum required employees
+            active_count = cluster.get_employee_count(include_excluded=False)
+            if active_count < min_employees:
+                print(f"   Cluster {cluster.id}: Skipped (only {active_count} employees, min {min_employees} required)")
+                skipped_clusters += 1
+                continue
+            
             route = self.routing_service.optimize_cluster_route(
                 cluster=cluster,
                 use_stops=use_stops
@@ -227,7 +236,10 @@ class ServicePlanner:
                 
                 print(f"   Cluster {cluster.id}: {active} employees → {n_stops} stops")
         
-        print(f"    OK: {len(routes)} routes created")
+        if skipped_clusters > 0:
+            print(f"    OK: {len(routes)} routes created, {skipped_clusters} clusters skipped (too few employees)")
+        else:
+            print(f"    OK: {len(routes)} routes created")
         
         return routes
     
