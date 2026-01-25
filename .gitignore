@@ -39,10 +39,6 @@ ENV/
 
 # output files
 maps/
-data/*.json
-
-# keep directories but not their contents
-!data/.gitkeep
 
 # OSM data files (large)
 *.osm
@@ -54,3 +50,6 @@ data/*.json
 
 # environment variables
 .env
+
+# data folder
+data/
