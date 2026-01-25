@@ -1,16 +1,8 @@
-"""
-Service Route Optimization
-Entry point for the route optimization system.
-"""
+"""Service Route Optimization - Main Entry Point"""
 from config import Config
-from services.planner import ServicePlanner
-
-
-def main():
-    config = Config()
-    planner = ServicePlanner(config)
-    planner.run()
+from services import ServicePlanner
 
 
 if __name__ == "__main__":
-    main()
+    planner = ServicePlanner(Config)
+    planner.run()
