@@ -47,8 +47,7 @@ data/*.json
 # OSM data files (large)
 *.osm
 *.osm.bz2
-# keep .pbf files as they're needed
-# *.osm.pbf
+*.osm.pbf
 
 # logs
 *.log

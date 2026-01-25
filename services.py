@@ -526,7 +526,7 @@ class ServicePlanner:
         return self.clusters
     
     def generate_stops(self) -> dict:
-        print("[4] Finding farthest employees from office...")
+        print("[3] Finding farthest employees from office...")
         office_lat, office_lon = self.config.OFFICE_LOCATION
         count = 0
         for c in self.clusters:
@@ -542,7 +542,7 @@ class ServicePlanner:
     
     def optimize_routes(self, use_stops: bool = True) -> list[Route]:
         min_emp = getattr(self.config, 'MIN_EMPLOYEES_FOR_SHUTTLE', 10)
-        print(f"[5] Creating routes (min {min_emp} employees)...")
+        print(f"[4] Creating routes (min {min_emp} employees)...")
         routes, skipped = [], 0
         for c in self.clusters:
             if c.get_employee_count(False) < min_emp:
@@ -562,7 +562,7 @@ class ServicePlanner:
     def assign_vehicles(self) -> list[Vehicle]:
         cap = getattr(self.config, 'VEHICLE_CAPACITY', 50)
         vtype = getattr(self.config, 'VEHICLE_TYPE', 'Minibus')
-        print(f"[7] Assigning vehicles (capacity: {cap})...")
+        print(f"[5] Assigning vehicles (capacity: {cap})...")
         self.vehicles = []
         for i, c in enumerate(self.clusters):
             v = Vehicle(id=i+1, capacity=cap, vehicle_type=vtype)

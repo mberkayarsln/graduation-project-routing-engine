@@ -72,7 +72,7 @@ class APICache:
 class OSRMRouter:
     """Client for OSRM routing API."""
     
-    def __init__(self, base_url: str = "https://router.project-osrm.org", cache_enabled: bool = True) -> None:
+    def __init__(self, base_url: str = "http://localhost:5001", cache_enabled: bool = True) -> None:
         self.base_url = base_url
         self.cache = APICache(cache_file='data/osrm_cache.json') if cache_enabled else None
     
