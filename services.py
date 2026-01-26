@@ -326,6 +326,377 @@ class VisualizationService:
         m.save(fn)
         return fn
     
+    def create_editable_cluster_map(self, cluster: Cluster) -> str:
+        """Create an interactive map with draggable route editing using Leaflet Routing Machine."""
+        import json
+        
+        os.makedirs("maps/editable", exist_ok=True)
+        fn = f"maps/editable/cluster_{cluster.id}_edit.html"
+        color = self._color(cluster.id)
+        
+        # Get waypoints: pickup stops or employee locations
+        waypoints = []
+        if cluster.stops:
+            waypoints = list(cluster.stops)
+        elif cluster.route and cluster.route.stops:
+            waypoints = list(cluster.route.stops)
+        else:
+            # Fallback to employee locations + cluster center + office
+            for emp in cluster.get_active_employees():
+                waypoints.append(emp.get_location())
+            waypoints.append(cluster.center)
+            waypoints.append(self.office_location)
+        
+        # Generate JavaScript array of L.latLng calls - proper JavaScript code, not strings
+        waypoints_js = "[" + ", ".join([f"L.latLng({float(wp[0])}, {float(wp[1])})" for wp in waypoints]) + "]"
+        
+        # Employee data for markers - convert to JSON-safe format
+        employees_data = []
+        for emp in cluster.employees:
+            pickup = None
+            if hasattr(emp, 'pickup_point') and emp.pickup_point:
+                pickup = [float(emp.pickup_point[0]), float(emp.pickup_point[1])]
+            employees_data.append({
+                'lat': float(emp.lat),
+                'lon': float(emp.lon),
+                'id': int(emp.id),
+                'excluded': bool(emp.excluded),
+                'pickup_point': pickup
+            })
+        
+        # Convert to JSON string for JavaScript
+        employees_json = json.dumps(employees_data)
+        
+        # Generate the HTML with Leaflet Routing Machine
+        html_content = f'''<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Edit Route - Cluster {cluster.id}</title>
+    
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
+    <!-- Leaflet Routing Machine CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+    <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+    
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
+    <style>
+        html, body {{
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }}
+        #map {{
+            height: calc(100% - 60px);
+            width: 100%;
+        }}
+        .toolbar {{
+            height: 60px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        }}
+        .toolbar h1 {{
+            color: white;
+            font-size: 18px;
+            margin: 0;
+            flex: 1;
+        }}
+        .toolbar button {{
+            background: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 10px;
+            transition: all 0.2s;
+        }}
+        .toolbar button:hover {{
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }}
+        .toolbar button.primary {{
+            background: #10b981;
+            color: white;
+        }}
+        .toolbar button.secondary {{
+            background: #f3f4f6;
+            color: #374151;
+        }}
+        .info-panel {{
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            max-width: 300px;
+        }}
+        .info-panel h3 {{
+            margin: 0 0 10px 0;
+            color: #1f2937;
+        }}
+        .info-panel p {{
+            margin: 5px 0;
+            color: #6b7280;
+            font-size: 14px;
+        }}
+        .info-panel .stat {{
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }}
+        .info-panel .stat:last-child {{
+            border-bottom: none;
+        }}
+        .info-panel .stat-value {{
+            font-weight: 600;
+            color: #1f2937;
+        }}
+        .leaflet-routing-container {{
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }}
+        .employee-marker {{
+            background: {color};
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }}
+        .excluded-marker {{
+            background: #9ca3af;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+            opacity: 0.6;
+        }}
+        .toast {{
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: #1f2937;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            z-index: 2000;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s;
+        }}
+        .toast.show {{
+            opacity: 1;
+            transform: translateY(0);
+        }}
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h1><i class="fas fa-route"></i> Cluster {cluster.id} - Route Editor</h1>
+        <button class="secondary" onclick="resetRoute()"><i class="fas fa-undo"></i> Reset</button>
+        <button class="secondary" onclick="addWaypoint()"><i class="fas fa-plus"></i> Add Stop</button>
+        <button class="primary" onclick="exportRoute()"><i class="fas fa-download"></i> Export Route</button>
+    </div>
+    
+    <div id="map"></div>
+    
+    <div class="info-panel">
+        <h3><i class="fas fa-info-circle"></i> Route Info</h3>
+        <div class="stat">
+            <span>Distance:</span>
+            <span class="stat-value" id="distance">--</span>
+        </div>
+        <div class="stat">
+            <span>Duration:</span>
+            <span class="stat-value" id="duration">--</span>
+        </div>
+        <div class="stat">
+            <span>Waypoints:</span>
+            <span class="stat-value" id="waypoints">--</span>
+        </div>
+        <p style="margin-top: 10px; font-size: 12px; color: #9ca3af;">
+            <i class="fas fa-hand-pointer"></i> Drag markers to edit route
+        </p>
+    </div>
+    
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        // Initialize map
+        const map = L.map('map').setView([{float(cluster.center[0])}, {float(cluster.center[1])}], 14);
+        
+        // Add tile layer
+        L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+            attribution: '&copy; OpenStreetMap contributors'
+        }}).addTo(map);
+        
+        // Initial waypoints as L.latLng objects
+        const initialWaypoints = {waypoints_js};
+        
+        // Store original waypoints for reset (deep copy)
+        const originalWaypoints = initialWaypoints.map(wp => L.latLng(wp.lat, wp.lng));
+        
+        // Employee data
+        const employees = {employees_json};
+        
+        // Office location
+        const officeLocation = [{float(self.office_location[0])}, {float(self.office_location[1])}];
+        
+        // Create routing control
+        let routingControl = L.Routing.control({{
+            waypoints: initialWaypoints,
+            routeWhileDragging: true,
+            draggableWaypoints: true,
+            addWaypoints: true,
+            fitSelectedRoutes: true,
+            showAlternatives: false,
+            lineOptions: {{
+                styles: [{{
+                    color: '{color}',
+                    opacity: 0.8,
+                    weight: 6
+                }}],
+                extendToWaypoints: true,
+                missingRouteTolerance: 0
+            }},
+            createMarker: function(i, waypoint, n) {{
+                const isOffice = (waypoint.latLng.lat.toFixed(4) === officeLocation[0].toFixed(4) && 
+                                  waypoint.latLng.lng.toFixed(4) === officeLocation[1].toFixed(4));
+                
+                if (isOffice) {{
+                    return L.marker(waypoint.latLng, {{
+                        draggable: true,
+                        icon: L.divIcon({{
+                            className: 'custom-marker',
+                            html: '<div style="font-size: 24px; color: #dc2626;"><i class="fas fa-home"></i></div>',
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15]
+                        }})
+                    }}).bindPopup('<b>Office</b>');
+                }}
+                
+                return L.marker(waypoint.latLng, {{
+                    draggable: true,
+                    icon: L.divIcon({{
+                        className: 'custom-marker',
+                        html: '<div style="background: #10b981; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">' + (i + 1) + '</div>',
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    }})
+                }}).bindPopup('<b>Stop ' + (i + 1) + '</b><br>Drag to move');
+            }}
+        }}).addTo(map);
+        
+        // Add employee markers
+        employees.forEach(emp => {{
+            const markerClass = emp.excluded ? 'excluded-marker' : 'employee-marker';
+            const marker = L.marker([emp.lat, emp.lon], {{
+                icon: L.divIcon({{
+                    className: markerClass,
+                    html: emp.excluded 
+                        ? '<div class="excluded-marker"></div>'
+                        : '<div class="employee-marker"></div>',
+                    iconSize: [12, 12],
+                    iconAnchor: [6, 6]
+                }})
+            }}).addTo(map);
+            
+            let popupContent = '<b>Employee ID: ' + emp.id + '</b>';
+            if (emp.excluded) {{
+                popupContent += '<br><span style="color: #9ca3af;">Excluded</span>';
+            }}
+            if (emp.pickup_point) {{
+                popupContent += '<br>Pickup: ' + emp.pickup_point[0].toFixed(5) + ', ' + emp.pickup_point[1].toFixed(5);
+            }}
+            marker.bindPopup(popupContent);
+        }});
+        
+        // Update info panel when route changes
+        routingControl.on('routesfound', function(e) {{
+            const routes = e.routes;
+            const summary = routes[0].summary;
+            
+            document.getElementById('distance').textContent = (summary.totalDistance / 1000).toFixed(2) + ' km';
+            document.getElementById('duration').textContent = Math.round(summary.totalTime / 60) + ' min';
+            document.getElementById('waypoints').textContent = routingControl.getWaypoints().filter(wp => wp.latLng).length;
+        }});
+        
+        // Toast notification
+        function showToast(message) {{
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }}
+        
+        // Reset route to original waypoints
+        function resetRoute() {{
+            routingControl.setWaypoints(originalWaypoints);
+            showToast('Route reset to original');
+        }}
+        
+        // Add a new waypoint at map center
+        function addWaypoint() {{
+            const center = map.getCenter();
+            const waypoints = routingControl.getWaypoints();
+            const newWaypoints = [...waypoints.slice(0, -1), L.latLng(center.lat, center.lng), waypoints[waypoints.length - 1]];
+            routingControl.setWaypoints(newWaypoints.map(wp => wp.latLng || wp));
+            showToast('New waypoint added at map center');
+        }}
+        
+        // Export route as JSON
+        function exportRoute() {{
+            const waypoints = routingControl.getWaypoints()
+                .filter(wp => wp.latLng)
+                .map(wp => ({{lat: wp.latLng.lat, lon: wp.latLng.lng}}));
+            
+            const routeData = {{
+                cluster_id: {cluster.id},
+                waypoints: waypoints,
+                exported_at: new Date().toISOString()
+            }};
+            
+            const blob = new Blob([JSON.stringify(routeData, null, 2)], {{type: 'application/json'}});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'cluster_{cluster.id}_route.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Route exported successfully!');
+            console.log('Exported route:', routeData);
+        }}
+    </script>
+</body>
+</html>'''
+        
+        with open(fn, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        
+        return fn
+
+    
     def create_zones_map(self, clusters: list[Cluster], zones=None, barrier_roads=None) -> str:
         fn = "maps/zones.html"
         all_emps = [e for c in clusters for e in c.employees]
@@ -366,6 +737,7 @@ class VisualizationService:
         for c in clusters:
             if c.route:  # Only create detailed maps for clusters with routes
                 files.append(self.create_cluster_detail_map(c))
+                files.append(self.create_editable_cluster_map(c))  # Also create editable version
         return files
 
 
