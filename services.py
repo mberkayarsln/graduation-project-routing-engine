@@ -399,7 +399,7 @@ class VisualizationService:
         }}
         .toolbar {{
             height: 60px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #667eea;
             display: flex;
             align-items: center;
             padding: 0 20px;
@@ -560,8 +560,11 @@ class VisualizationService:
         // Office location
         const officeLocation = [{float(self.office_location[0])}, {float(self.office_location[1])}];
         
-        // Create routing control
+        // Create routing control with local OSRM server
         let routingControl = L.Routing.control({{
+            router: L.Routing.osrmv1({{
+                serviceUrl: 'http://localhost:5001/route/v1'
+            }}),
             waypoints: initialWaypoints,
             routeWhileDragging: true,
             draggableWaypoints: true,
