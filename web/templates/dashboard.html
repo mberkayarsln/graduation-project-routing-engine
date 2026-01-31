@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Routing Engine{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="refreshStats()">Refresh</button>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-employees">--</span>
+            <span class="stat-label">Total Employees</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-active">--</span>
+            <span class="stat-label">Active Employees</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-routes">--</span>
+            <span class="stat-label">Active Routes</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-vehicles">--</span>
+            <span class="stat-label">Vehicles</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-clusters">--</span>
+            <span class="stat-label">Clusters</span>
+        </div>
+    </div>
+
+    <div class="stat-card">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-zones">--</span>
+            <span class="stat-label">Zones</span>
+        </div>
+    </div>
+
+    <div class="stat-card wide">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-distance">--</span>
+            <span class="stat-label">Total Distance (km)</span>
+        </div>
+    </div>
+
+    <div class="stat-card wide">
+        <div class="stat-content">
+            <span class="stat-value" id="stat-duration">--</span>
+            <span class="stat-label">Total Duration (min)</span>
+        </div>
+    </div>
+</div>
+
+<!-- Overview Map -->
+<div class="card">
+    <div class="card-header">
+        <h2>Route Overview</h2>
+    </div>
+    <div class="card-body">
+        <div id="overview-map" style="height: 500px; border-radius: 12px;"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Initialize map
+    const map = L.map('overview-map').setView([41.0082, 28.9784], 11);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap, &copy; CARTO'
+    }).addTo(map);
+
+    // Office marker
+    const officeIcon = L.divIcon({
+        className: 'custom-marker office-marker',
+        html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>',
+        iconSize: [12, 12]
+    });
+    L.marker([41.1097, 29.0204], { icon: officeIcon }).addTo(map)
+        .bindPopup('<b>Office</b>');
+
+    // Load stats
+    async function refreshStats() {
+        try {
+            const res = await fetch('/api/stats');
+            const data = await res.json();
+
+            document.getElementById('stat-employees').textContent = data.total_employees;
+            document.getElementById('stat-active').textContent = data.active_employees;
+            document.getElementById('stat-routes').textContent = data.total_routes;
+            document.getElementById('stat-vehicles').textContent = data.total_vehicles;
+            document.getElementById('stat-clusters').textContent = data.total_clusters;
+            document.getElementById('stat-zones').textContent = data.total_zones;
+            document.getElementById('stat-distance').textContent = data.total_distance_km;
+            document.getElementById('stat-duration').textContent = Math.round(data.total_duration_min);
+        } catch (err) {
+            console.error('Error loading stats:', err);
+        }
+    }
+
+    // Load routes on map
+    async function loadRoutes() {
+        try {
+            const res = await fetch('/api/routes');
+            const routes = await res.json();
+
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'];
+
+            routes.forEach((route, i) => {
+                const color = colors[i % colors.length];
+
+                // Draw route path using coordinates (actual road path)
+                const pathCoords = route.coordinates && route.coordinates.length > 1 ? route.coordinates : route.stops;
+                if (pathCoords && pathCoords.length > 1) {
+                    const latlngs = pathCoords.map(s => [s[0], s[1]]);
+                    L.polyline(latlngs, {
+                        color: color,
+                        weight: 3,
+                        opacity: 0.8
+                    }).addTo(map);
+                }
+
+                // Add cluster center marker
+                if (route.center) {
+                    const clusterIcon = L.divIcon({
+                        className: 'custom-marker cluster-marker',
+                        html: `<div style="background:${color};width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;">${i + 1}</div>`,
+                        iconSize: [20, 20]
+                    });
+                    L.marker([route.center[0], route.center[1]], { icon: clusterIcon }).addTo(map)
+                        .bindPopup(`<b>Route ${i + 1}</b><br>Distance: ${route.distance_km} km<br>Duration: ${Math.round(route.duration_min)} min`);
+                }
+            });
+        } catch (err) {
+            console.error('Error loading routes:', err);
+        }
+    }
+
+    // Initialize
+    refreshStats();
+    loadRoutes();
+</script>
+{% endblock %}

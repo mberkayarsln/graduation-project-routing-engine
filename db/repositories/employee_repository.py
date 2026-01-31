@@ -194,3 +194,16 @@ class EmployeeRepository(BaseRepository[Employee]):
         query = "UPDATE employees SET deleted_at = now() WHERE deleted_at IS NULL"
         self.db.execute(query)
         return 0
+    
+    def update_pickup_point(self, employee_id: int, pickup_point: tuple[float, float], pickup_type: str = "stop") -> bool:
+        """Update employee's pickup point."""
+        pickup_wkt = self.point_to_wkt(pickup_point[0], pickup_point[1])
+        query = """
+            UPDATE employees SET
+                pickup_point = ST_GeomFromText(%s, 4326),
+                pickup_type = %s,
+                updated_at = now()
+            WHERE id = %s AND deleted_at IS NULL
+        """
+        self.db.execute(query, (pickup_wkt, pickup_type, employee_id))
+        return True

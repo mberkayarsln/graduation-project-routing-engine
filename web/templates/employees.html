@@ -1,0 +1,235 @@
+{% extends "base.html" %}
+
+{% block title %}Employees - Routing Engine{% endblock %}
+{% block page_title %}Employees{% endblock %}
+
+{% block header_actions %}
+<div class="search-box">
+    <input type="text" id="employee-search" placeholder="Search employees..." onkeyup="filterEmployees()">
+</div>
+<select id="filter-status" onchange="filterEmployees()">
+    <option value="all">All Status</option>
+    <option value="active">Active Only</option>
+    <option value="excluded">Excluded Only</option>
+</select>
+{% endblock %}
+
+{% block content %}
+<div class="table-card">
+    <table class="data-table" id="employees-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Location</th>
+                <th>Zone</th>
+                <th>Cluster</th>
+                <th>Pickup Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="employees-tbody">
+            <tr>
+                <td colspan="8" class="loading">Loading employees...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Employee Detail Modal -->
+<div id="employee-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="modal-title">Employee Details</h3>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="employee-map" style="height: 300px; border-radius: 12px; margin-bottom: 20px;"></div>
+
+            <form id="employee-form">
+                <input type="hidden" id="edit-employee-id">
+
+                <div class="form-group">
+                    <label>Pickup Type</label>
+                    <select id="edit-pickup-type">
+                        <option value="route">Route Pickup</option>
+                        <option value="home">Home Pickup</option>
+                        <option value="office">Office Direct</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Status</label>
+                    <div class="toggle-group">
+                        <label class="toggle">
+                            <input type="checkbox" id="edit-excluded">
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Excluded from Service</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="form-group" id="exclusion-reason-group" style="display:none;">
+                    <label>Exclusion Reason</label>
+                    <input type="text" id="edit-exclusion-reason" placeholder="Enter reason...">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let employees = [];
+    let employeeMap = null;
+
+    async function loadEmployees() {
+        try {
+            const res = await fetch('/api/employees');
+            employees = await res.json();
+            renderEmployees(employees);
+        } catch (err) {
+            console.error('Error loading employees:', err);
+            document.getElementById('employees-tbody').innerHTML =
+                '<tr><td colspan="8" class="error">Error loading employees</td></tr>';
+        }
+    }
+
+    function renderEmployees(data) {
+        const tbody = document.getElementById('employees-tbody');
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="empty">No employees found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(e => `
+        <tr class="${e.excluded ? 'excluded-row' : ''}">
+            <td>${e.id}</td>
+            <td>${e.name}</td>
+            <td>${e.lat.toFixed(4)}, ${e.lon.toFixed(4)}</td>
+            <td>${e.zone_id || '-'}</td>
+            <td>${e.cluster_id || '-'}</td>
+            <td><span class="badge badge-${e.pickup_type}">${e.pickup_type}</span></td>
+            <td>
+                <span class="status-badge ${e.excluded ? 'status-excluded' : 'status-active'}">
+                    ${e.excluded ? 'Excluded' : 'Active'}
+                </span>
+            </td>
+            <td>
+                <button class="btn-icon" onclick="editEmployee(${e.id})" title="Edit">Edit</button>
+                <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon})" title="View on Map">Map</button>
+            </td>
+        </tr>
+    `).join('');
+    }
+
+    function filterEmployees() {
+        const search = document.getElementById('employee-search').value.toLowerCase();
+        const status = document.getElementById('filter-status').value;
+
+        let filtered = employees.filter(e => {
+            const matchSearch = e.name.toLowerCase().includes(search) ||
+                e.id.toString().includes(search);
+
+            if (status === 'active') return matchSearch && !e.excluded;
+            if (status === 'excluded') return matchSearch && e.excluded;
+            return matchSearch;
+        });
+
+        renderEmployees(filtered);
+    }
+
+    function editEmployee(id) {
+        const emp = employees.find(e => e.id === id);
+        if (!emp) return;
+
+        document.getElementById('modal-title').textContent = `Edit: ${emp.name}`;
+        document.getElementById('edit-employee-id').value = emp.id;
+        document.getElementById('edit-pickup-type').value = emp.pickup_type || 'route';
+        document.getElementById('edit-excluded').checked = emp.excluded;
+        document.getElementById('edit-exclusion-reason').value = emp.exclusion_reason || '';
+
+        // Show/hide exclusion reason
+        document.getElementById('exclusion-reason-group').style.display =
+            emp.excluded ? 'block' : 'none';
+
+        // Show modal
+        document.getElementById('employee-modal').style.display = 'flex';
+
+        // Initialize map
+        setTimeout(() => {
+            if (employeeMap) {
+                employeeMap.remove();
+            }
+            employeeMap = L.map('employee-map').setView([emp.lat, emp.lon], 15);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(employeeMap);
+
+            // Home marker
+            L.marker([emp.lat, emp.lon]).addTo(employeeMap)
+                .bindPopup('Home Location').openPopup();
+
+            // Pickup point if different
+            if (emp.pickup_point && (emp.pickup_point[0] !== emp.lat || emp.pickup_point[1] !== emp.lon)) {
+                L.marker([emp.pickup_point[0], emp.pickup_point[1]], {
+                    icon: L.divIcon({ className: 'pickup-marker', html: '<div style="background:#10b981;width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [10, 10] })
+                }).addTo(employeeMap).bindPopup('Pickup Point');
+            }
+        }, 100);
+    }
+
+    function closeModal() {
+        document.getElementById('employee-modal').style.display = 'none';
+    }
+
+    // Toggle exclusion reason visibility
+    document.getElementById('edit-excluded').addEventListener('change', function () {
+        document.getElementById('exclusion-reason-group').style.display =
+            this.checked ? 'block' : 'none';
+    });
+
+    // Form submission
+    document.getElementById('employee-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const id = document.getElementById('edit-employee-id').value;
+        const data = {
+            pickup_type: document.getElementById('edit-pickup-type').value,
+            excluded: document.getElementById('edit-excluded').checked,
+            exclusion_reason: document.getElementById('edit-exclusion-reason').value
+        };
+
+        try {
+            const res = await fetch(`/api/employees/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                closeModal();
+                loadEmployees();
+            } else {
+                alert('Error saving changes');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error saving changes');
+        }
+    });
+
+    function viewOnMap(lat, lon) {
+        window.open(`https://www.google.com/maps?q=${lat},${lon}`, '_blank');
+    }
+
+    // Initialize
+    loadEmployees();
+</script>
+{% endblock %}
