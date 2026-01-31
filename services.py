@@ -850,6 +850,18 @@ class ServicePlanner:
         self.stats = {}
         self.zone_assignments = {}
         self.safe_stops = []
+        
+        # Database integration
+        self.use_database = getattr(config, 'USE_DATABASE', False)
+        self.db = None
+        self.zone_repo = None
+        self.employee_repo = None
+        self.cluster_repo = None
+        self.route_repo = None
+        self.vehicle_repo = None
+        
+        if self.use_database:
+            self._init_database()
     
     @staticmethod
     def get_departure_time() -> datetime:
@@ -979,9 +991,181 @@ class ServicePlanner:
         print(f"✓ Distance: {s['total_distance_km']} km\n✓ Duration: {s['total_duration_min']:.0f} min")
         print("="*50 + "\n")
     
+    # =========================================================================
+    # Database Methods
+    # =========================================================================
+    
+    def _init_database(self) -> None:
+        """Initialize database connection and repositories."""
+        try:
+            from db.connection import Database
+            from db.repositories import (
+                ZoneRepository, EmployeeRepository, ClusterRepository,
+                RouteRepository, VehicleRepository
+            )
+            
+            self.db = Database()
+            if self.db.test_connection():
+                print("[DB] Connected to database")
+                self.zone_repo = ZoneRepository(self.db)
+                self.employee_repo = EmployeeRepository(self.db)
+                self.cluster_repo = ClusterRepository(self.db)
+                self.route_repo = RouteRepository(self.db)
+                self.vehicle_repo = VehicleRepository(self.db)
+            else:
+                print("[DB] Connection failed, running without database")
+                self.use_database = False
+        except Exception as e:
+            print(f"[DB] Error initializing database: {e}")
+            self.use_database = False
+    
+    def save_to_db(self) -> dict:
+        """Save all data to database. Returns counts of saved records."""
+        if not self.use_database:
+            print("[DB] Database not enabled, skipping save")
+            return {}
+        
+        print("[DB] Saving to database...")
+        counts = {}
+        
+        try:
+            # Save zones first (employees reference zones)
+            if self.zone_service:
+                zones = self.zone_service.get_zones()
+                if zones:
+                    zone_id_mapping = {}  # Map old index to new DB id
+                    for idx, zone_polygon in enumerate(zones):
+                        # zones is a list of Shapely polygons
+                        boundary_wkt = zone_polygon.wkt if hasattr(zone_polygon, 'wkt') else None
+                        db_zone_id = self.zone_repo.save(f"Zone {idx}", boundary_wkt)
+                        zone_id_mapping[idx] = db_zone_id
+                    
+                    # Update employee zone_ids to match DB IDs
+                    for emp in self.employees:
+                        if emp.zone_id is not None and emp.zone_id in zone_id_mapping:
+                            emp.zone_id = zone_id_mapping[emp.zone_id]
+                    
+                    counts['zones'] = len(zones)
+                    print(f"    ✓ Saved {counts['zones']} zones")
+            
+            # Clear zone_id from employees if zones weren't saved (to avoid FK violation)
+            if 'zones' not in counts:
+                for emp in self.employees:
+                    emp.zone_id = None
+            
+            # Save clusters before employees (employees reference clusters)
+            cluster_id_mapping = {}  # Map old cluster.id to new DB id
+            if self.clusters:
+                for cluster in self.clusters:
+                    old_cluster_id = cluster.id
+                    # Temporarily remove employees to save cluster first
+                    temp_employees = cluster.employees
+                    cluster.employees = []
+                    db_cluster_id = self.cluster_repo.save(cluster)
+                    cluster.employees = temp_employees
+                    cluster_id_mapping[old_cluster_id] = db_cluster_id
+                    cluster.id = db_cluster_id  # Update cluster's own ID
+                    
+                    # Update employee cluster_ids
+                    for emp in cluster.employees:
+                        emp.cluster_id = db_cluster_id
+                
+                counts['clusters'] = len(self.clusters)
+                print(f"    ✓ Saved {counts['clusters']} clusters")
+            
+            # Save employees (now clusters exist for FK)
+            if self.employees:
+                self.employee_repo.save_batch(self.employees)
+                counts['employees'] = len(self.employees)
+                print(f"    ✓ Saved {counts['employees']} employees")
+            
+            # Save vehicles before routes (routes reference vehicles)
+            vehicle_id_mapping = {}
+            if self.vehicles:
+                for vehicle in self.vehicles:
+                    old_vehicle_id = vehicle.id
+                    db_vehicle_id = self.vehicle_repo.save(vehicle)
+                    vehicle_id_mapping[old_vehicle_id] = db_vehicle_id
+                    vehicle.id = db_vehicle_id
+                counts['vehicles'] = len(self.vehicles)
+                print(f"    ✓ Saved {counts['vehicles']} vehicles")
+            
+            # Save routes (clusters and vehicles already saved with updated IDs)
+            route_count = 0
+            for cluster in self.clusters:
+                if cluster.route:
+                    # Get updated vehicle_id from mapping
+                    vehicle_id = None
+                    if cluster.vehicle and cluster.vehicle.id in vehicle_id_mapping:
+                        vehicle_id = vehicle_id_mapping[cluster.vehicle.id]
+                    elif cluster.vehicle:
+                        vehicle_id = cluster.vehicle.id
+                    self.route_repo.save(cluster.route, cluster.id, vehicle_id)
+                    route_count += 1
+            counts['routes'] = route_count
+            if route_count > 0:
+                print(f"    ✓ Saved {counts['routes']} routes")
+            
+            print("[DB] Save complete")
+            
+        except Exception as e:
+            print(f"[DB] Error saving to database: {e}")
+            raise
+        
+        return counts
+    
+    def load_from_db(self) -> dict:
+        """Load data from database. Returns counts of loaded records."""
+        if not self.use_database:
+            print("[DB] Database not enabled, skipping load")
+            return {}
+        
+        print("[DB] Loading from database...")
+        counts = {}
+        
+        try:
+            # Load employees
+            self.employees = self.employee_repo.find_all()
+            counts['employees'] = len(self.employees)
+            
+            # Load clusters with employees
+            self.clusters = self.cluster_repo.find_all(include_employees=True)
+            counts['clusters'] = len(self.clusters)
+            
+            # Load routes for each cluster
+            for cluster in self.clusters:
+                route = self.route_repo.find_by_cluster(cluster.id)
+                if route:
+                    cluster.assign_route(route)
+            
+            # Load vehicles
+            self.vehicles = self.vehicle_repo.find_all()
+            counts['vehicles'] = len(self.vehicles)
+            
+            print(f"    ✓ Loaded {counts['employees']} employees, {counts['clusters']} clusters, {counts['vehicles']} vehicles")
+            
+        except Exception as e:
+            print(f"[DB] Error loading from database: {e}")
+        
+        return counts
+    
+    def clear_db(self) -> None:
+        """Clear all data from database (soft delete)."""
+        if not self.use_database:
+            return
+        
+        print("[DB] Clearing database...")
+        self.route_repo.delete_all()
+        self.cluster_repo.delete_all()
+        self.employee_repo.delete_all()
+        self.vehicle_repo.delete_all()
+        print("[DB] Database cleared")
+    
     def run(self) -> None:
         print("\n" + "="*50 + "\n        SERVICE ROUTE OPTIMIZATION\n" + "="*50)
         print(f"   Config: {self.config.NUM_EMPLOYEES} employees, {self.config.NUM_CLUSTERS} clusters")
+        if self.use_database:
+            print("   Database: ENABLED")
         print("="*50 + "\n")
         
         print("[0] Loading Safe Pickup Points...")
@@ -996,3 +1180,8 @@ class ServicePlanner:
         self.assign_vehicles()
         self.generate_maps()
         self.print_summary()
+        
+        # Save to database if enabled
+        if self.use_database:
+            self.save_to_db()
+

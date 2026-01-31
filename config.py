@@ -4,6 +4,7 @@ Configuration settings for the Service Route Optimization system.
 This module centralizes all configuration parameters for employee generation,
 clustering, routing, and visualization.
 """
+import os
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -67,3 +68,16 @@ class Config:
     MAP_CLUSTERS: str = f"{OUTPUT_DIR}/clusters.html"
     MAP_ROUTES: str = f"{OUTPUT_DIR}/optimized_routes.html"
     MAP_CLUSTER_DETAIL: str = f"{OUTPUT_DIR}/cluster_0_detail.html"
+    
+    # =========================================================================
+    # Database Settings
+    # =========================================================================
+    DATABASE_HOST: str = os.getenv("DATABASE_HOST", "localhost")
+    DATABASE_PORT: int = int(os.getenv("DATABASE_PORT", "5432"))
+    DATABASE_NAME: str = os.getenv("DATABASE_NAME", "berkay")
+    DATABASE_USER: str = os.getenv("DATABASE_USER", "berkay")
+    DATABASE_PASSWORD: str = os.getenv("DATABASE_PASSWORD", "")
+    
+    # Enable database persistence (set to False to run without database)
+    USE_DATABASE: bool = os.getenv("USE_DATABASE", "true").lower() == "true"
+
