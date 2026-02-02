@@ -158,6 +158,30 @@
             opacity: 1;
         }
     }
+
+    /* Loading spinner */
+    .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 0.8s linear infinite;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
 </style>
 {% endblock %}
 
@@ -354,7 +378,13 @@
             try {
                 const res = await fetch(`/api/clusters/${route.cluster_id}`);
                 const cluster = await res.json();
-                if (cluster.employees) {
+
+                if (cluster.error) {
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Cluster not found</span>';
+                    return;
+                }
+
+                if (cluster.employees && cluster.employees.length > 0) {
                     // Show employee names in details panel
                     document.getElementById(`employees-${index}`).innerHTML = cluster.employees.map(e =>
                         `<span class="employee-chip">${e.name}</span>`
@@ -374,20 +404,39 @@
                             }
                         });
 
-                        // Add bus stop markers
-                        pickupPoints.forEach((stop, key) => {
-                            const stopIcon = L.divIcon({
-                                className: 'bus-stop-marker',
-                                html: '<div style="background:#ffa800;width:14px;height:14px;border-radius:3px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:#fff;">B</div>',
-                                iconSize: [14, 14],
-                                iconAnchor: [7, 7]
-                            });
-                            L.marker([stop.lat, stop.lon], { icon: stopIcon })
-                                .addTo(currentLayer)
-                                .bindPopup(`<b>Bus Stop</b><br>${stop.employees.length} employee(s):<br>${stop.employees.join('<br>')}`);
-                        });
+                        // Add bus stop markers with real names (only for stops that exist in OSM)
+                        if (pickupPoints.size > 0) {
+                            // Fetch real stop names from API
+                            const coords = Array.from(pickupPoints.values()).map(s => [s.lat, s.lon]);
+                            fetch('/api/stops/names', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ coordinates: coords })
+                            })
+                                .then(res => res.json())
+                                .then(stopNames => {
+                                    pickupPoints.forEach((stop, key) => {
+                                        const stopName = stopNames[key];
+                                        // Only show marker if it's a real bus stop (has a name from OSM, not generic fallback)
+                                        if (stopName && stopName !== 'Bus Stop') {
+                                            const stopIcon = L.divIcon({
+                                                className: 'bus-stop-marker',
+                                                html: '<div style="background:#ffa800;width:14px;height:14px;border-radius:3px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:#fff;">B</div>',
+                                                iconSize: [14, 14],
+                                                iconAnchor: [7, 7]
+                                            });
+                                            L.marker([stop.lat, stop.lon], { icon: stopIcon })
+                                                .addTo(currentLayer)
+                                                .bindPopup(`<b>${stopName}</b><br>${stop.employees.length} employee(s):<br>${stop.employees.join('<br>')}`);
+                                        }
+                                    });
+                                })
+                                .catch(err => {
+                                    console.error('Error fetching stop names:', err);
+                                });
+                        }
 
-                        // Add employee home markers (smaller, different color)
+                        // Add employee home markers and lines to their pickup points
                         cluster.employees.forEach(emp => {
                             const empIcon = L.divIcon({
                                 className: 'employee-marker',
@@ -398,11 +447,27 @@
                             L.marker([emp.lat, emp.lon], { icon: empIcon })
                                 .addTo(currentLayer)
                                 .bindPopup(`<b>${emp.name}</b><br>Home location`);
+
+                            // Draw line from employee to their pickup point
+                            if (emp.pickup_point) {
+                                L.polyline(
+                                    [[emp.lat, emp.lon], [emp.pickup_point[0], emp.pickup_point[1]]],
+                                    {
+                                        color: '#f64e60',
+                                        weight: 1,
+                                        opacity: 0.5,
+                                        dashArray: '3, 5'
+                                    }
+                                ).addTo(currentLayer);
+                            }
                         });
                     }
+                } else {
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">No employees assigned</span>';
                 }
             } catch (err) {
                 console.error('Error loading cluster:', err);
+                document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Error loading employees</span>';
             }
         }
     }
@@ -512,6 +577,13 @@
             return;
         }
 
+        // Show loading state
+        const detailsEl = document.getElementById(`details-${index}`);
+        const saveBtn = detailsEl.querySelector('.btn-success');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="spinner"></span>Saving...';
+        saveBtn.disabled = true;
+
         const waypoints = routingControl.getWaypoints()
             .filter(wp => wp.latLng)
             .map(wp => [wp.latLng.lat, wp.latLng.lng]);
@@ -553,10 +625,14 @@
                 cancelEdit(index);
             } else {
                 showToast('Error saving route', 'error');
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
             }
         } catch (err) {
             console.error('Error saving route:', err);
             showToast('Error saving route', 'error');
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
         }
     }
 

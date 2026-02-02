@@ -101,5 +101,3 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
     document.head.appendChild(style);
 });
-
-console.log('🚐 Routing Engine Management UI loaded');

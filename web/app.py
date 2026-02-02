@@ -363,6 +363,50 @@ def api_update_vehicle(id):
 
 
 # =============================================================================
+# REST API - Bus Stop Names
+# =============================================================================
+
+# Cache for transit stop names
+_transit_stops_cache = None
+
+@app.route('/api/stops/names', methods=['POST'])
+def api_stop_names():
+    """Look up bus stop names by coordinates."""
+    global _transit_stops_cache
+    
+    try:
+        # Load transit stops with names (cached)
+        if _transit_stops_cache is None:
+            from utils import DataGenerator
+            data_gen = DataGenerator()
+            _transit_stops_cache = data_gen.get_transit_stops_with_names()
+        
+        data = request.json
+        coordinates = data.get('coordinates', [])  # List of [lat, lon] pairs
+        
+        results = {}
+        for coord in coordinates:
+            lat, lon = coord[0], coord[1]
+            # Find nearest stop within ~50m (0.0005 degrees)
+            best_name = None
+            best_dist = float('inf')
+            for (stop_lat, stop_lon), name in _transit_stops_cache.items():
+                dist = abs(stop_lat - lat) + abs(stop_lon - lon)
+                if dist < 0.0005 and dist < best_dist:
+                    best_dist = dist
+                    best_name = name
+            
+            key = f"{lat:.5f},{lon:.5f}"
+            results[key] = best_name or 'Bus Stop'
+        
+        return jsonify(results)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
 # Run Server
 # =============================================================================
 

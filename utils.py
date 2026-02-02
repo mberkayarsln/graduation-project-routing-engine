@@ -55,8 +55,7 @@ class DataGenerator:
         self._load_osm_data()
         stops = self._osm.get_data_by_custom_criteria(
             custom_filter={
-                "highway": ["bus_stop"], "railway": ["subway_entrance", "tram_stop"],
-                "public_transport": ["platform", "stop_position"], "amenity": ["bus_station"]
+                "highway": ["bus_stop"], "amenity": ["bus_station"]
             },
             filter_type="keep", keep_nodes=True, keep_ways=False, keep_relations=False
         )
@@ -64,6 +63,29 @@ class DataGenerator:
             return []
         return [(row.geometry.y, row.geometry.x) for _, row in stops.iterrows() 
                 if hasattr(row.geometry, 'y')]
+    
+    def get_transit_stops_with_names(self) -> dict[tuple[float, float], str]:
+        """Get transit stops with their names as a dict: {(lat, lon): name}"""
+        self._load_osm_data()
+        stops = self._osm.get_data_by_custom_criteria(
+            custom_filter={
+                "highway": ["bus_stop"], "amenity": ["bus_station"]
+            },
+            filter_type="keep", keep_nodes=True, keep_ways=False, keep_relations=False
+        )
+        if stops is None or len(stops) == 0:
+            return {}
+        
+        result = {}
+        for _, row in stops.iterrows():
+            if hasattr(row.geometry, 'y'):
+                lat, lon = row.geometry.y, row.geometry.x
+                # Get name from OSM data, fallback to generic name
+                name = row.get('name', '') if hasattr(row, 'get') else ''
+                if not name and 'name' in row.index:
+                    name = row['name'] if pd.notna(row['name']) else ''
+                result[(lat, lon)] = name or 'Bus Stop'
+        return result
     
     def generate(self, n: int = 100, seed: int = 42) -> pd.DataFrame:
         self._load_osm_data()
