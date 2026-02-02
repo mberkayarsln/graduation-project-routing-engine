@@ -1178,7 +1178,7 @@ class ServicePlanner:
         self.generate_stops()
         self.optimize_routes(use_stops=True)
         self.assign_vehicles()
-        self.generate_maps()
+        # self.generate_maps()  # Disabled - maps now shown in web UI
         self.print_summary()
         
         # Save to database if enabled
