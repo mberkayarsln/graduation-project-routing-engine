@@ -21,8 +21,8 @@ class Config:
     # =========================================================================
     # Employee Generation
     # =========================================================================
-    NUM_EMPLOYEES: int = 500
-    NUM_CLUSTERS: int = 40
+    NUM_EMPLOYEES: int = 300
+    NUM_CLUSTERS: int = 20
     
     # =========================================================================
     # Cluster & Stop Settings
@@ -80,4 +80,7 @@ class Config:
     
     # Enable database persistence (set to False to run without database)
     USE_DATABASE: bool = os.getenv("USE_DATABASE", "true").lower() == "true"
+    
+    # Clear all existing data before saving new data (for development/testing)
+    TRUNCATE_DATABASE_ON_SAVE: bool = True
 

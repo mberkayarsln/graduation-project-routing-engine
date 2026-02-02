@@ -1050,8 +1050,9 @@ class ServicePlanner:
             print("[DB] Database not enabled, skipping save")
             return {}
         
-        # Clear existing data first (temporary - for development)
-        self.clear_database()
+        # Clear existing data first if configured
+        if getattr(self.config, 'TRUNCATE_DATABASE_ON_SAVE', False):
+            self.clear_database()
         
         print("[DB] Saving to database...")
         counts = {}
