@@ -1019,21 +1019,49 @@ class ServicePlanner:
             print(f"[DB] Error initializing database: {e}")
             self.use_database = False
     
+    def clear_database(self):
+        """Clear all database tables (for fresh data generation)."""
+        if not self.use_database:
+            return
+        
+        print("[DB] Clearing existing data...")
+        try:
+            self.db.execute("""
+                TRUNCATE TABLE 
+                    employee_stop_assignments,
+                    route_modifications,
+                    route_stops,
+                    vehicle_assignments,
+                    schedules,
+                    routes,
+                    vehicles,
+                    employees,
+                    clusters,
+                    zones
+                CASCADE
+            """)
+            print("    ✓ All tables cleared")
+        except Exception as e:
+            print(f"    ✗ Error clearing tables: {e}")
+    
     def save_to_db(self) -> dict:
         """Save all data to database. Returns counts of saved records."""
         if not self.use_database:
             print("[DB] Database not enabled, skipping save")
             return {}
         
+        # Clear existing data first (temporary - for development)
+        self.clear_database()
+        
         print("[DB] Saving to database...")
         counts = {}
         
         try:
             # Save zones first (employees reference zones)
+            zone_id_mapping = {}  # Map old index to new DB id
             if self.zone_service:
                 zones = self.zone_service.get_zones()
                 if zones:
-                    zone_id_mapping = {}  # Map old index to new DB id
                     for idx, zone_polygon in enumerate(zones):
                         # zones is a list of Shapely polygons
                         boundary_wkt = zone_polygon.wkt if hasattr(zone_polygon, 'wkt') else None
@@ -1045,13 +1073,20 @@ class ServicePlanner:
                         if emp.zone_id is not None and emp.zone_id in zone_id_mapping:
                             emp.zone_id = zone_id_mapping[emp.zone_id]
                     
+                    # Update cluster zone_ids to match DB IDs
+                    for cluster in self.clusters:
+                        if cluster.zone_id is not None and cluster.zone_id in zone_id_mapping:
+                            cluster.zone_id = zone_id_mapping[cluster.zone_id]
+                    
                     counts['zones'] = len(zones)
                     print(f"    ✓ Saved {counts['zones']} zones")
             
-            # Clear zone_id from employees if zones weren't saved (to avoid FK violation)
+            # Clear zone_id from employees and clusters if zones weren't saved (to avoid FK violation)
             if 'zones' not in counts:
                 for emp in self.employees:
                     emp.zone_id = None
+                for cluster in self.clusters:
+                    cluster.zone_id = None
             
             # Save clusters before employees (employees reference clusters)
             cluster_id_mapping = {}  # Map old cluster.id to new DB id
