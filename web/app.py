@@ -131,7 +131,6 @@ def api_employees():
             'cluster_id': e.cluster_id,
             'excluded': e.excluded,
             'exclusion_reason': e.exclusion_reason,
-            'pickup_type': e.pickup_type,
             'pickup_point': e.pickup_point
         } for e in employees])
     except Exception as e:
@@ -154,7 +153,6 @@ def api_employee(id):
             'cluster_id': e.cluster_id,
             'excluded': e.excluded,
             'exclusion_reason': e.exclusion_reason,
-            'pickup_type': e.pickup_type,
             'pickup_point': e.pickup_point
         })
     except Exception as e:
@@ -174,8 +172,6 @@ def api_update_employee(id):
             e.excluded = data['excluded']
         if 'exclusion_reason' in data:
             e.exclusion_reason = data['exclusion_reason']
-        if 'pickup_type' in data:
-            e.pickup_type = data['pickup_type']
         
         employee_repo.save(e)
         return jsonify({'success': True})

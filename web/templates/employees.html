@@ -24,14 +24,14 @@
                 <th>Location</th>
                 <th>Zone</th>
                 <th>Cluster</th>
-                <th>Pickup Type</th>
+
                 <th>Status</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody id="employees-tbody">
             <tr>
-                <td colspan="8" class="loading">Loading employees...</td>
+                <td colspan="7" class="loading">Loading employees...</td>
             </tr>
         </tbody>
     </table>
@@ -49,15 +49,6 @@
 
             <form id="employee-form">
                 <input type="hidden" id="edit-employee-id">
-
-                <div class="form-group">
-                    <label>Pickup Type</label>
-                    <select id="edit-pickup-type">
-                        <option value="route">Route Pickup</option>
-                        <option value="home">Home Pickup</option>
-                        <option value="office">Office Direct</option>
-                    </select>
-                </div>
 
                 <div class="form-group">
                     <label>Status</label>
@@ -106,7 +97,7 @@
         const tbody = document.getElementById('employees-tbody');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="empty">No employees found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">No employees found</td></tr>';
             return;
         }
 
@@ -117,14 +108,13 @@
             <td>${e.lat.toFixed(4)}, ${e.lon.toFixed(4)}</td>
             <td>${e.zone_id || '-'}</td>
             <td>${e.cluster_id || '-'}</td>
-            <td><span class="badge badge-${e.pickup_type}">${e.pickup_type}</span></td>
+
             <td>
                 <span class="status-badge ${e.excluded ? 'status-excluded' : 'status-active'}">
                     ${e.excluded ? 'Excluded' : 'Active'}
                 </span>
             </td>
             <td>
-                <button class="btn-icon" onclick="editEmployee(${e.id})" title="Edit">Edit</button>
                 <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon})" title="View on Map">Map</button>
             </td>
         </tr>
@@ -153,7 +143,6 @@
 
         document.getElementById('modal-title').textContent = `Edit: ${emp.name}`;
         document.getElementById('edit-employee-id').value = emp.id;
-        document.getElementById('edit-pickup-type').value = emp.pickup_type || 'route';
         document.getElementById('edit-excluded').checked = emp.excluded;
         document.getElementById('edit-exclusion-reason').value = emp.exclusion_reason || '';
 
@@ -201,7 +190,6 @@
 
         const id = document.getElementById('edit-employee-id').value;
         const data = {
-            pickup_type: document.getElementById('edit-pickup-type').value,
             excluded: document.getElementById('edit-excluded').checked,
             exclusion_reason: document.getElementById('edit-exclusion-reason').value
         };

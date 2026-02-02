@@ -297,10 +297,9 @@ class VisualizationService:
                     ).add_to(m)
                     
                     # Draw bus stop marker (only once per unique location)
-                    is_stop = hasattr(employee, 'pickup_type') and employee.pickup_type == 'stop'
                     stop_key = (round(target_location[0], 6), round(target_location[1], 6))
                     
-                    if is_stop and stop_key not in pickup_points_drawn:
+                    if stop_key not in pickup_points_drawn:
                         folium.Marker(
                             location=target_location,
                             icon=folium.DivIcon(

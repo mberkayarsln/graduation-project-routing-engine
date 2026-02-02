@@ -36,7 +36,6 @@ class EmployeeRepository(BaseRepository[Employee]):
         pickup = self.point_from_row(row, "pickup_point_wkt")
         if pickup:
             emp.pickup_point = pickup
-        emp.pickup_type = row.get("pickup_type", "route")
         
         return emp
     
@@ -44,7 +43,6 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Find all active employees."""
         query = """
             SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
-                   pickup_type,
                    ST_AsText(home_location) as home_location_wkt,
                    ST_AsText(pickup_point) as pickup_point_wkt
             FROM employees
@@ -59,7 +57,6 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Find employee by ID."""
         query = """
             SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
-                   pickup_type,
                    ST_AsText(home_location) as home_location_wkt,
                    ST_AsText(pickup_point) as pickup_point_wkt
             FROM employees
@@ -72,7 +69,6 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Find all employees in a cluster."""
         query = """
             SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
-                   pickup_type,
                    ST_AsText(home_location) as home_location_wkt,
                    ST_AsText(pickup_point) as pickup_point_wkt
             FROM employees
@@ -86,7 +82,6 @@ class EmployeeRepository(BaseRepository[Employee]):
         """Find all employees in a zone."""
         query = """
             SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
-                   pickup_type,
                    ST_AsText(home_location) as home_location_wkt,
                    ST_AsText(pickup_point) as pickup_point_wkt
             FROM employees
@@ -120,14 +115,13 @@ class EmployeeRepository(BaseRepository[Employee]):
                     is_excluded = %s,
                     exclusion_reason = %s,
                     pickup_point = CASE WHEN %s IS NOT NULL THEN ST_GeomFromText(%s, 4326) ELSE NULL END,
-                    pickup_type = %s,
                     updated_at = now()
                 WHERE id = %s
             """
             self.db.execute(query, (
                 employee.name, home_wkt, employee.zone_id, employee.cluster_id,
                 employee.excluded, employee.exclusion_reason,
-                pickup_wkt, pickup_wkt, employee.pickup_type,
+                pickup_wkt, pickup_wkt,
                 employee.id
             ))
             return employee.id
@@ -135,9 +129,9 @@ class EmployeeRepository(BaseRepository[Employee]):
             # Insert
             query = """
                 INSERT INTO employees (id, full_name, home_location, zone_id, cluster_id,
-                                       is_excluded, exclusion_reason, pickup_point, pickup_type)
+                                       is_excluded, exclusion_reason, pickup_point)
                 VALUES (%s, %s, ST_GeomFromText(%s, 4326), %s, %s, %s, %s,
-                        CASE WHEN %s IS NOT NULL THEN ST_GeomFromText(%s, 4326) ELSE NULL END, %s)
+                        CASE WHEN %s IS NOT NULL THEN ST_GeomFromText(%s, 4326) ELSE NULL END)
                 ON CONFLICT (id) DO UPDATE SET
                     full_name = EXCLUDED.full_name,
                     home_location = EXCLUDED.home_location,
@@ -146,7 +140,6 @@ class EmployeeRepository(BaseRepository[Employee]):
                     is_excluded = EXCLUDED.is_excluded,
                     exclusion_reason = EXCLUDED.exclusion_reason,
                     pickup_point = EXCLUDED.pickup_point,
-                    pickup_type = EXCLUDED.pickup_type,
                     updated_at = now(),
                     deleted_at = NULL
                 RETURNING id
@@ -154,7 +147,7 @@ class EmployeeRepository(BaseRepository[Employee]):
             return self.db.fetchval(query, (
                 employee.id, employee.name, home_wkt, employee.zone_id, employee.cluster_id,
                 employee.excluded, employee.exclusion_reason,
-                pickup_wkt, pickup_wkt, employee.pickup_type
+                pickup_wkt, pickup_wkt
             ))
     
     def save_batch(self, employees: list[Employee]) -> int:
@@ -195,15 +188,14 @@ class EmployeeRepository(BaseRepository[Employee]):
         self.db.execute(query)
         return 0
     
-    def update_pickup_point(self, employee_id: int, pickup_point: tuple[float, float], pickup_type: str = "stop") -> bool:
+    def update_pickup_point(self, employee_id: int, pickup_point: tuple[float, float]) -> bool:
         """Update employee's pickup point."""
         pickup_wkt = self.point_to_wkt(pickup_point[0], pickup_point[1])
         query = """
             UPDATE employees SET
                 pickup_point = ST_GeomFromText(%s, 4326),
-                pickup_type = %s,
                 updated_at = now()
             WHERE id = %s AND deleted_at IS NULL
         """
-        self.db.execute(query, (pickup_wkt, pickup_type, employee_id))
+        self.db.execute(query, (pickup_wkt, employee_id))
         return True

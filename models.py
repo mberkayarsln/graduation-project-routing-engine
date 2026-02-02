@@ -35,11 +35,9 @@ class Employee:
         self.excluded: bool = False
         self.exclusion_reason: str = ""
         self.pickup_point: tuple[float, float] | None = None
-        self.pickup_type: str = "route"
     
-    def set_pickup_point(self, lat: float, lon: float, type: str = "route") -> None:
+    def set_pickup_point(self, lat: float, lon: float, type: str = None) -> None:
         self.pickup_point = (lat, lon)
-        self.pickup_type = type
     
     def distance_to(self, other_lat: float, other_lon: float) -> float:
         return haversine(self.lat, self.lon, other_lat, other_lon)
