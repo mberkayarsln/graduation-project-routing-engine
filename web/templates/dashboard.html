@@ -9,62 +9,22 @@
 
 {% block content %}
 <!-- Stats Cards -->
-<div class="stats-grid">
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-employees">--</span>
-            <span class="stat-label">Total Employees</span>
-        </div>
+<div class="stats-list">
+    <div class="stat-item"><span class="stat-label">Total Employees</span><span class="stat-value"
+            id="stat-employees">--</span></div>
+    <div class="stat-item"><span class="stat-label">Active Employees</span><span class="stat-value"
+            id="stat-active">--</span></div>
+    <div class="stat-item"><span class="stat-label">Active Routes</span><span class="stat-value"
+            id="stat-routes">--</span></div>
+    <div class="stat-item"><span class="stat-label">Vehicles</span><span class="stat-value" id="stat-vehicles">--</span>
     </div>
-
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-active">--</span>
-            <span class="stat-label">Active Employees</span>
-        </div>
+    <div class="stat-item"><span class="stat-label">Clusters</span><span class="stat-value" id="stat-clusters">--</span>
     </div>
-
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-routes">--</span>
-            <span class="stat-label">Active Routes</span>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-vehicles">--</span>
-            <span class="stat-label">Vehicles</span>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-clusters">--</span>
-            <span class="stat-label">Clusters</span>
-        </div>
-    </div>
-
-    <div class="stat-card">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-zones">--</span>
-            <span class="stat-label">Zones</span>
-        </div>
-    </div>
-
-    <div class="stat-card wide">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-distance">--</span>
-            <span class="stat-label">Total Distance (km)</span>
-        </div>
-    </div>
-
-    <div class="stat-card wide">
-        <div class="stat-content">
-            <span class="stat-value" id="stat-duration">--</span>
-            <span class="stat-label">Total Duration (min)</span>
-        </div>
-    </div>
+    <div class="stat-item"><span class="stat-label">Zones</span><span class="stat-value" id="stat-zones">--</span></div>
+    <div class="stat-item"><span class="stat-label">Total Distance (km)</span><span class="stat-value"
+            id="stat-distance">--</span></div>
+    <div class="stat-item"><span class="stat-label">Total Duration (min)</span><span class="stat-value"
+            id="stat-duration">--</span></div>
 </div>
 
 <!-- Overview Map -->
@@ -86,6 +46,9 @@
         attribution: '&copy; OpenStreetMap, &copy; CARTO'
     }).addTo(map);
 
+    // Layer group for routes (so we can clear and reload)
+    let routeLayer = L.layerGroup().addTo(map);
+
     // Office marker
     const officeIcon = L.divIcon({
         className: 'custom-marker office-marker',
@@ -95,7 +58,7 @@
     L.marker([41.1097, 29.0204], { icon: officeIcon }).addTo(map)
         .bindPopup('<b>Office</b>');
 
-    // Load stats
+    // Load stats and refresh map
     async function refreshStats() {
         try {
             const res = await fetch('/api/stats');
@@ -109,6 +72,9 @@
             document.getElementById('stat-zones').textContent = data.total_zones;
             document.getElementById('stat-distance').textContent = data.total_distance_km;
             document.getElementById('stat-duration').textContent = Math.round(data.total_duration_min);
+
+            // Also refresh the map
+            loadRoutes();
         } catch (err) {
             console.error('Error loading stats:', err);
         }
@@ -116,6 +82,9 @@
 
     // Load routes on map
     async function loadRoutes() {
+        // Clear existing routes
+        routeLayer.clearLayers();
+
         try {
             const res = await fetch('/api/routes');
             const routes = await res.json();
@@ -133,7 +102,7 @@
                         color: color,
                         weight: 3,
                         opacity: 0.8
-                    }).addTo(map);
+                    }).addTo(routeLayer);
                 }
 
                 // Add cluster center marker
@@ -143,7 +112,7 @@
                         html: `<div style="background:${color};width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:bold;">${i + 1}</div>`,
                         iconSize: [20, 20]
                     });
-                    L.marker([route.center[0], route.center[1]], { icon: clusterIcon }).addTo(map)
+                    L.marker([route.center[0], route.center[1]], { icon: clusterIcon }).addTo(routeLayer)
                         .bindPopup(`<b>Route ${i + 1}</b><br>Distance: ${route.distance_km} km<br>Duration: ${Math.round(route.duration_min)} min`);
                 }
             });
