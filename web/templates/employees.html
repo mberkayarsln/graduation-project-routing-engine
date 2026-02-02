@@ -15,6 +15,25 @@
 {% endblock %}
 
 {% block content %}
+<!-- Employee Map -->
+<div class="card" style="margin-bottom: 20px;">
+    <div class="card-header">
+        <h2>Employee Locations</h2>
+        <div style="display:flex;gap:10px;align-items:center;">
+            <span id="selection-count" style="color:var(--text-muted);font-size:13px;"></span>
+            <button class="btn btn-secondary btn-sm" onclick="clearSelection()" id="clear-selection-btn"
+                style="display:none;">Clear</button>
+            <button class="btn btn-danger btn-sm" onclick="excludeSelected()" id="exclude-btn"
+                style="display:none;">Exclude Selected</button>
+            <button class="btn btn-success btn-sm" onclick="includeSelected()" id="include-btn"
+                style="display:none;">Include Selected</button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="employees-map" style="height: 400px; border-radius: 12px;"></div>
+    </div>
+</div>
+
 <div class="table-card">
     <table class="data-table" id="employees-table">
         <thead>
@@ -80,12 +99,133 @@
 <script>
     let employees = [];
     let employeeMap = null;
+    let mainMap = null;
+    let employeeMarkerLayer = null;
+    let selectedEmployees = new Set();
+    let employeeMarkers = {};
+
+    function updateSelectionUI() {
+        const count = selectedEmployees.size;
+        document.getElementById('selection-count').textContent = count > 0 ? `${count} selected` : '';
+        document.getElementById('clear-selection-btn').style.display = count > 0 ? 'inline-flex' : 'none';
+        document.getElementById('exclude-btn').style.display = count > 0 ? 'inline-flex' : 'none';
+        document.getElementById('include-btn').style.display = count > 0 ? 'inline-flex' : 'none';
+    }
+
+    function toggleSelection(empId) {
+        if (selectedEmployees.has(empId)) {
+            selectedEmployees.delete(empId);
+        } else {
+            selectedEmployees.add(empId);
+        }
+        updateMarkerStyle(empId);
+        updateSelectionUI();
+    }
+
+    function updateMarkerStyle(empId) {
+        const marker = employeeMarkers[empId];
+        const emp = employees.find(e => e.id === empId);
+        if (!marker || !emp) return;
+
+        const isSelected = selectedEmployees.has(empId);
+        const color = isSelected ? '#3699ff' : (emp.excluded ? '#f64e60' : '#10b981');
+        const size = isSelected ? 12 : 8;
+        marker.setIcon(L.divIcon({
+            className: 'employee-marker',
+            html: `<div style="background:${color};width:${size}px;height:${size}px;border-radius:50%;border:${isSelected ? '2' : '1'}px solid #fff;"></div>`,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2]
+        }));
+    }
+
+    function clearSelection() {
+        const selected = Array.from(selectedEmployees);
+        selectedEmployees.clear();
+        selected.forEach(id => updateMarkerStyle(id));
+        updateSelectionUI();
+        // Close any open popups
+        mainMap.closePopup();
+    }
+
+    async function excludeSelected() {
+        for (const id of selectedEmployees) {
+            await fetch(`/api/employees/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ excluded: true, exclusion_reason: 'Excluded from map' })
+            });
+        }
+        clearSelection();
+        loadEmployees();
+    }
+
+    async function includeSelected() {
+        for (const id of selectedEmployees) {
+            await fetch(`/api/employees/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ excluded: false, exclusion_reason: '' })
+            });
+        }
+        clearSelection();
+        loadEmployees();
+    }
+
+    function initMainMap() {
+        mainMap = L.map('employees-map').setView([41.0082, 28.9784], 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap, &copy; CARTO'
+        }).addTo(mainMap);
+        employeeMarkerLayer = L.layerGroup().addTo(mainMap);
+
+        // Office marker (blue)
+        L.marker([41.1097, 29.0204], {
+            icon: L.divIcon({
+                className: 'office-marker',
+                html: '<div style="background:#3699ff;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
+                iconSize: [14, 14], iconAnchor: [7, 7]
+            })
+        }).addTo(mainMap).bindPopup('<b>Office</b>');
+    }
+
+    function renderEmployeesOnMap() {
+        employeeMarkerLayer.clearLayers();
+        employeeMarkers = {};
+
+        employees.forEach(e => {
+            const isSelected = selectedEmployees.has(e.id);
+            const color = isSelected ? '#3699ff' : (e.excluded ? '#f64e60' : '#10b981');
+            const size = isSelected ? 12 : 8;
+
+            const marker = L.marker([e.lat, e.lon], {
+                icon: L.divIcon({
+                    className: 'employee-marker',
+                    html: `<div style="background:${color};width:${size}px;height:${size}px;border-radius:50%;border:${isSelected ? '2' : '1'}px solid #fff;cursor:pointer;"></div>`,
+                    iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+                })
+            }).addTo(employeeMarkerLayer);
+
+            marker.on('click', function (evt) {
+                if (!evt.originalEvent.shiftKey) clearSelection();
+                toggleSelection(e.id);
+            });
+            employeeMarkers[e.id] = marker;
+
+            // Only show pickup lines for active employees
+            if (!e.excluded && e.pickup_point && (e.pickup_point[0] !== e.lat || e.pickup_point[1] !== e.lon)) {
+                L.polyline([[e.lat, e.lon], [e.pickup_point[0], e.pickup_point[1]]], {
+                    color: '#10b981', weight: 1, opacity: 0.4, dashArray: '3,5'
+                }).addTo(employeeMarkerLayer);
+            }
+        });
+    }
 
     async function loadEmployees() {
         try {
             const res = await fetch('/api/employees');
             employees = await res.json();
             renderEmployees(employees);
+            renderEmployeesOnMap();
         } catch (err) {
             console.error('Error loading employees:', err);
             document.getElementById('employees-tbody').innerHTML =
@@ -115,7 +255,7 @@
                 </span>
             </td>
             <td>
-                <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon})" title="View on Map">Map</button>
+                <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon}, ${e.id})" title="View on Map">Map</button>
             </td>
         </tr>
     `).join('');
@@ -213,11 +353,20 @@
         }
     });
 
-    function viewOnMap(lat, lon) {
-        window.open(`https://www.google.com/maps?q=${lat},${lon}`, '_blank');
+    function viewOnMap(lat, lon, empId) {
+        // Scroll map into view and center on employee
+        document.getElementById('employees-map').scrollIntoView({ behavior: 'smooth' });
+        mainMap.setView([lat, lon], 15);
+
+        // Select the employee
+        clearSelection();
+        if (empId) {
+            toggleSelection(empId);
+        }
     }
 
     // Initialize
+    initMainMap();
     loadEmployees();
 </script>
 {% endblock %}

@@ -8,6 +8,16 @@
 {% endblock %}
 
 {% block content %}
+<!-- Overview Map -->
+<div class="card">
+    <div class="card-header">
+        <h2>Route Overview</h2>
+    </div>
+    <div class="card-body">
+        <div id="overview-map" style="height: 540px; border-radius: 12px;"></div>
+    </div>
+</div>
+
 <!-- Stats Cards -->
 <div class="stats-list">
     <div class="stat-item"><span class="stat-label">Total Employees</span><span class="stat-value"
@@ -26,16 +36,6 @@
     <div class="stat-item"><span class="stat-label">Total Duration (min)</span><span class="stat-value"
             id="stat-duration">--</span></div>
 </div>
-
-<!-- Overview Map -->
-<div class="card">
-    <div class="card-header">
-        <h2>Route Overview</h2>
-    </div>
-    <div class="card-body">
-        <div id="overview-map" style="height: 540px; border-radius: 12px;"></div>
-    </div>
-</div>
 {% endblock %}
 
 {% block scripts %}
@@ -52,7 +52,7 @@
     // Office marker
     const officeIcon = L.divIcon({
         className: 'custom-marker office-marker',
-        html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>',
+        html: '<div style="background:#3699ff;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>',
         iconSize: [12, 12]
     });
     L.marker([41.1097, 29.0204], { icon: officeIcon }).addTo(map)
