@@ -4,12 +4,30 @@
 {% block page_title %}Vehicles{% endblock %}
 
 {% block header_actions %}
+<div class="search-box">
+    <input type="text" id="vehicle-search" placeholder="Search vehicles..." onkeyup="filterVehicles()">
+</div>
 <button class="btn btn-primary" onclick="loadVehicles()">Refresh</button>
 {% endblock %}
 
 {% block content %}
-<div class="vehicles-grid" id="vehicles-container">
-    <div class="loading">Loading vehicles...</div>
+<div class="table-card">
+    <table class="data-table" id="vehicles-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Driver</th>
+                <th>Capacity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="vehicles-tbody">
+            <tr>
+                <td colspan="5" class="loading">Loading vehicles...</td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <!-- Edit Vehicle Modal -->
@@ -51,35 +69,45 @@
         try {
             const res = await fetch('/api/vehicles');
             vehicles = await res.json();
-            renderVehicles();
+            renderVehicles(vehicles);
         } catch (err) {
             console.error('Error loading vehicles:', err);
-            document.getElementById('vehicles-container').innerHTML =
-                '<div class="error">Error loading vehicles</div>';
+            document.getElementById('vehicles-tbody').innerHTML =
+                '<tr><td colspan="5" class="error">Error loading vehicles</td></tr>';
         }
     }
 
-    function renderVehicles() {
-        const container = document.getElementById('vehicles-container');
+    function renderVehicles(data) {
+        const tbody = document.getElementById('vehicles-tbody');
 
-        if (vehicles.length === 0) {
-            container.innerHTML = '<div class="empty">No vehicles found</div>';
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No vehicles found</td></tr>';
             return;
         }
 
-        container.innerHTML = vehicles.map(v => `
-        <div class="vehicle-card">
-            <div class="vehicle-info">
-                <span class="vehicle-id">Vehicle #${v.id}</span>
-                <span class="vehicle-type">${v.vehicle_type}</span>
-                <span class="vehicle-driver">${v.driver_name || 'No driver assigned'}</span>
-                <span class="vehicle-capacity">Capacity: ${v.capacity} passengers</span>
-            </div>
-            <div class="vehicle-actions">
-                <button class="btn btn-secondary btn-sm" onclick="editVehicle(${v.id})">Edit</button>
-            </div>
-        </div>
-    `).join('');
+        tbody.innerHTML = data.map(v => `
+            <tr onclick="editVehicle(${v.id})" style="cursor:pointer;">
+                <td>${v.id}</td>
+                <td>${v.vehicle_type}</td>
+                <td>${v.driver_name || '<span style="color:var(--text-muted);">Not assigned</span>'}</td>
+                <td>${v.capacity} passengers</td>
+                <td>
+                    <button class="btn-icon" onclick="event.stopPropagation(); editVehicle(${v.id})" title="Edit vehicle">✎</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterVehicles() {
+        const search = document.getElementById('vehicle-search').value.toLowerCase();
+
+        const filtered = vehicles.filter(v => {
+            return v.id.toString().includes(search) ||
+                v.vehicle_type.toLowerCase().includes(search) ||
+                (v.driver_name && v.driver_name.toLowerCase().includes(search));
+        });
+
+        renderVehicles(filtered);
     }
 
     function editVehicle(id) {

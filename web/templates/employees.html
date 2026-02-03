@@ -212,13 +212,6 @@
                 toggleSelection(e.id);
             });
             employeeMarkers[e.id] = marker;
-
-            // Only show pickup lines for active employees
-            if (!e.excluded && e.pickup_point && (e.pickup_point[0] !== e.lat || e.pickup_point[1] !== e.lon)) {
-                L.polyline([[e.lat, e.lon], [e.pickup_point[0], e.pickup_point[1]]], {
-                    color: '#10b981', weight: 1, opacity: 0.4, dashArray: '3,5'
-                }).addTo(employeeMarkerLayer);
-            }
         });
     }
 
