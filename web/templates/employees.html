@@ -244,7 +244,7 @@
         }
 
         tbody.innerHTML = data.map(e => `
-        <tr class="${e.excluded ? 'excluded-row' : ''}">
+        <tr class="${e.excluded ? 'excluded-row' : ''}" onclick="viewOnMap(${e.lat}, ${e.lon}, ${e.id})" style="cursor:pointer;">
             <td>${e.id}</td>
             <td>${e.name}</td>
             <td>${e.lat.toFixed(4)}, ${e.lon.toFixed(4)}</td>
@@ -256,10 +256,9 @@
                     ${e.excluded ? 'Excluded' : 'Active'}
                 </span>
             </td>
-            <td style="display:flex;gap:5px;">
-                <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon}, ${e.id})" title="View on Map">Map</button>
+            <td>
                 <button class="btn-icon ${e.excluded ? 'btn-include' : 'btn-exclude'}" 
-                        onclick="toggleExclusion(${e.id}, ${e.excluded})" 
+                        onclick="event.stopPropagation(); toggleExclusion(${e.id}, ${e.excluded})" 
                         title="${e.excluded ? 'Include employee' : 'Exclude employee'}">
                     ${e.excluded ? '✓' : '✕'}
                 </button>

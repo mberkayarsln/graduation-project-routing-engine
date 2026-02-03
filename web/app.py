@@ -288,7 +288,7 @@ def api_cluster(id):
 def api_routes():
     """Get all routes with cluster info."""
     try:
-        clusters = cluster_repo.find_all()
+        clusters = cluster_repo.find_all(include_employees=True)
         routes = []
         for c in clusters:
             route = route_repo.find_by_cluster(c.id)
@@ -301,6 +301,7 @@ def api_routes():
                     'stops': route.stops,
                     'coordinates': route.coordinates,
                     'stop_count': len(route.stops),
+                    'employee_count': len(c.employees),
                     'optimized': route.optimized
                 })
         return jsonify(routes)
