@@ -4,6 +4,7 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block header_actions %}
+<button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Generate Routes</button>
 <button class="btn btn-primary" onclick="refreshStats()">Refresh</button>
 {% endblock %}
 
@@ -49,11 +50,13 @@
     // Layer group for routes (so we can clear and reload)
     let routeLayer = L.layerGroup().addTo(map);
 
-    // Office marker
+    // Office marker with building icon
     const officeIcon = L.divIcon({
         className: 'custom-marker office-marker',
-        html: '<div style="background:#3699ff;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>',
-        iconSize: [12, 12]
+        html: `<div style="background:#3699ff;width:20px;height:20px;border-radius:6px;border:1px solid #fff;display:flex;align-items:center;justify-content:center;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+        </div>`,
+        iconSize: [20, 20], iconAnchor: [10, 10]
     });
     L.marker([41.1097, 29.0204], { icon: officeIcon }).addTo(map)
         .bindPopup('<b>Office</b>');
@@ -118,6 +121,34 @@
             });
         } catch (err) {
             console.error('Error loading routes:', err);
+        }
+    }
+
+    async function generateRoutes() {
+        const btn = document.getElementById('generate-btn');
+        const originalText = btn.textContent;
+
+        try {
+            btn.textContent = 'Generating...';
+            btn.disabled = true;
+
+            const res = await fetch('/api/generate-routes', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.success) {
+                // Refresh everything
+                await refreshStats();
+                await loadRoutes();
+                alert('Routes generated successfully!');
+            } else {
+                alert('Error: ' + (data.error || 'Unknown error'));
+            }
+        } catch (err) {
+            console.error('Error generating routes:', err);
+            alert('Error generating routes');
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
         }
     }
 

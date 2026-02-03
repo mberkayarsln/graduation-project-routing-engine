@@ -16,7 +16,7 @@
 
 {% block content %}
 <!-- Employee Map -->
-<div class="card" style="margin-bottom: 20px;">
+<div class="card" id="employee-map-card" style="margin-bottom: 20px;">
     <div class="card-header">
         <h2>Employee Locations</h2>
         <div style="display:flex;gap:10px;align-items:center;">
@@ -178,12 +178,14 @@
         }).addTo(mainMap);
         employeeMarkerLayer = L.layerGroup().addTo(mainMap);
 
-        // Office marker (blue)
+        // Office marker with building icon
         L.marker([41.1097, 29.0204], {
             icon: L.divIcon({
                 className: 'office-marker',
-                html: '<div style="background:#3699ff;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
-                iconSize: [14, 14], iconAnchor: [7, 7]
+                html: `<div style="background:#3699ff;width:20px;height:20px;border-radius:6px;border:1px solid #fff;display:flex;align-items:center;justify-content:center;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 7V3H2v18h20V7H12zM6 19H4v-2h2v2zm0-4H4v-2h2v2zm0-4H4V9h2v2zm0-4H4V5h2v2zm4 12H8v-2h2v2zm0-4H8v-2h2v2zm0-4H8V9h2v2zm0-4H8V5h2v2zm10 12h-8v-2h2v-2h-2v-2h2v-2h-2V9h8v10zm-2-8h-2v2h2v-2zm0 4h-2v2h2v-2z"/></svg>
+                </div>`,
+                iconSize: [20, 20], iconAnchor: [10, 10]
             })
         }).addTo(mainMap).bindPopup('<b>Office</b>');
     }
@@ -254,8 +256,13 @@
                     ${e.excluded ? 'Excluded' : 'Active'}
                 </span>
             </td>
-            <td>
+            <td style="display:flex;gap:5px;">
                 <button class="btn-icon" onclick="viewOnMap(${e.lat}, ${e.lon}, ${e.id})" title="View on Map">Map</button>
+                <button class="btn-icon ${e.excluded ? 'btn-include' : 'btn-exclude'}" 
+                        onclick="toggleExclusion(${e.id}, ${e.excluded})" 
+                        title="${e.excluded ? 'Include employee' : 'Exclude employee'}">
+                    ${e.excluded ? '✓' : '✕'}
+                </button>
             </td>
         </tr>
     `).join('');
@@ -355,13 +362,29 @@
 
     function viewOnMap(lat, lon, empId) {
         // Scroll map into view and center on employee
-        document.getElementById('employees-map').scrollIntoView({ behavior: 'smooth' });
-        mainMap.setView([lat, lon], 15);
+        document.getElementById('employee-map-card').scrollIntoView({ behavior: 'smooth' });
+        mainMap.setView([lat, lon], 13);
 
         // Select the employee
         clearSelection();
         if (empId) {
             toggleSelection(empId);
+        }
+    }
+
+    async function toggleExclusion(empId, currentlyExcluded) {
+        try {
+            await fetch(`/api/employees/${empId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    excluded: !currentlyExcluded,
+                    exclusion_reason: currentlyExcluded ? '' : 'Excluded from table'
+                })
+            });
+            await loadEmployees();
+        } catch (err) {
+            console.error('Error toggling exclusion:', err);
         }
     }
 

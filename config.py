@@ -81,6 +81,9 @@ class Config:
     # Enable database persistence (set to False to run without database)
     USE_DATABASE: bool = os.getenv("USE_DATABASE", "true").lower() == "true"
     
+    # Load employees from database instead of generating new ones
+    # Set to False to generate new random employees each run
+    LOAD_EMPLOYEES_FROM_DB: bool = True
+    
     # Clear all existing data before saving new data (for development/testing)
     TRUNCATE_DATABASE_ON_SAVE: bool = True
-

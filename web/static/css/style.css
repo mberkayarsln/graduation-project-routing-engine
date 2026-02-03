@@ -329,6 +329,15 @@ body {
     background: #3f3f5a;
 }
 
+.btn-success {
+    background: var(--color-success);
+    color: white;
+}
+
+.btn-success:hover {
+    background: #0bb783;
+}
+
 .btn-sm {
     padding: 5px 10px;
     font-size: 12px;
@@ -348,6 +357,26 @@ body {
 .btn-icon:hover {
     background: var(--border-color);
     color: var(--text-primary);
+}
+
+.btn-icon.btn-exclude {
+    color: var(--color-danger);
+    border-color: var(--color-danger);
+}
+
+.btn-icon.btn-exclude:hover {
+    background: var(--color-danger);
+    color: white;
+}
+
+.btn-icon.btn-include {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.btn-icon.btn-include:hover {
+    background: var(--color-success);
+    color: white;
 }
 
 /* =============================================================================

@@ -849,6 +849,7 @@ class ServicePlanner:
         self.stats = {}
         self.zone_assignments = {}
         self.safe_stops = []
+        self.all_employees: list[Employee] = []  # Includes excluded (for DB save)
         
         # Database integration
         self.use_database = getattr(config, 'USE_DATABASE', False)
@@ -868,11 +869,49 @@ class ServicePlanner:
         return t + timedelta(days=1) if datetime.now().hour >= 8 else t
     
     def generate_employees(self, count: int | None = None, seed: int | None = None) -> list[Employee]:
+        """Generate new employees or load from database if configured."""
+        # Try to load from database if configured
+        load_from_db = getattr(self.config, 'LOAD_EMPLOYEES_FROM_DB', True)
+        if load_from_db and self.use_database and self.employee_repo:
+            db_employees = self.load_employees_from_db()
+            if db_employees:
+                return db_employees
+        
+        # Generate new employees
         count = count or self.config.NUM_EMPLOYEES
         seed = seed if seed is not None else 42
         print(f"[1] Generating {count} employee locations...")
         self.employees = self.location_service.generate_employees(count, seed)
+        # For new employees, all are active, so all_employees = employees
+        self.all_employees = list(self.employees)
         print(f"    OK: {len(self.employees)} employees generated")
+        return self.employees
+    
+    def load_employees_from_db(self) -> list[Employee]:
+        """Load existing employees from database."""
+        if not self.employee_repo:
+            return []
+        
+        print("[1] Loading employees from database...")
+        all_employees = self.employee_repo.find_all()
+        
+        if not all_employees:
+            print("    No employees in database, will generate new ones")
+            return []
+        
+        # Clear old zone_id and cluster_id since zones/clusters are regenerated
+        for emp in all_employees:
+            emp.zone_id = None
+            emp.cluster_id = None
+        
+        # Store ALL employees (for saving back to DB with updated data)
+        self.all_employees = all_employees
+        
+        # But only use active (non-excluded) employees for routing
+        self.employees = [e for e in all_employees if not e.excluded]
+        excluded_count = len(all_employees) - len(self.employees)
+        
+        print(f"    OK: {len(self.employees)} active employees loaded ({excluded_count} excluded)")
         return self.employees
     
     def create_zones(self) -> dict:
@@ -1019,12 +1058,13 @@ class ServicePlanner:
             self.use_database = False
     
     def clear_database(self):
-        """Clear all database tables (for fresh data generation)."""
+        """Clear route-related database tables (preserves employees)."""
         if not self.use_database:
             return
         
-        print("[DB] Clearing existing data...")
+        print("[DB] Clearing route data (preserving employees)...")
         try:
+            # Clear route-related tables but keep employees
             self.db.execute("""
                 TRUNCATE TABLE 
                     employee_stop_assignments,
@@ -1034,12 +1074,19 @@ class ServicePlanner:
                     schedules,
                     routes,
                     vehicles,
-                    employees,
                     clusters,
                     zones
                 CASCADE
             """)
-            print("    ✓ All tables cleared")
+            # Reset employee pickup points and cluster assignments
+            self.db.execute("""
+                UPDATE employees SET 
+                    pickup_point = NULL,
+                    cluster_id = NULL,
+                    zone_id = NULL
+                WHERE deleted_at IS NULL
+            """)
+            print("    ✓ Route data cleared, employees preserved")
         except Exception as e:
             print(f"    ✗ Error clearing tables: {e}")
     
@@ -1109,9 +1156,11 @@ class ServicePlanner:
                 print(f"    ✓ Saved {counts['clusters']} clusters")
             
             # Save employees (now clusters exist for FK)
-            if self.employees:
-                self.employee_repo.save_batch(self.employees)
-                counts['employees'] = len(self.employees)
+            # Save ALL employees including excluded ones
+            employees_to_save = self.all_employees if self.all_employees else self.employees
+            if employees_to_save:
+                self.employee_repo.save_batch(employees_to_save)
+                counts['employees'] = len(employees_to_save)
                 print(f"    ✓ Saved {counts['employees']} employees")
             
             # Save vehicles before routes (routes reference vehicles)

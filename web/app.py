@@ -113,6 +113,51 @@ def api_stats():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/generate-routes', methods=['POST'])
+def api_generate_routes():
+    """Trigger route generation."""
+    try:
+        from config import Config
+        from services import ServicePlanner
+        
+        # Run route generation
+        planner = ServicePlanner(Config)
+        planner.run()
+        
+        # Return updated stats
+        employees = employee_repo.find_all()
+        clusters = cluster_repo.find_all()
+        vehicles = vehicle_repo.find_all()
+        
+        total_distance = 0
+        total_duration = 0
+        route_count = 0
+        
+        for cluster in clusters:
+            route = route_repo.find_by_cluster(cluster.id)
+            if route:
+                total_distance += route.distance_km
+                total_duration += route.duration_min
+                route_count += 1
+        
+        excluded = sum(1 for e in employees if e.excluded)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Routes generated successfully',
+            'stats': {
+                'total_employees': len(employees),
+                'active_employees': len(employees) - excluded,
+                'total_routes': route_count,
+                'total_vehicles': len(vehicles),
+                'total_distance_km': round(total_distance, 2),
+                'total_duration_min': round(total_duration, 1)
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 # =============================================================================
 # REST API - Employees
 # =============================================================================
