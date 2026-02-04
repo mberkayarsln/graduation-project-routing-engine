@@ -27,6 +27,8 @@
             id="stat-active">--</span></div>
     <div class="stat-item"><span class="stat-label">Unassigned</span><span class="stat-value"
             id="stat-unassigned">--</span></div>
+    <div class="stat-item"><span class="stat-label">Efficieny (Assigned / Total Active)</span><span class="stat-value"
+            id="stat-efficiency">--</span></div>
     <div class="stat-item"><span class="stat-label">Active Routes</span><span class="stat-value"
             id="stat-routes">--</span></div>
     <div class="stat-item"><span class="stat-label">Vehicles</span><span class="stat-value" id="stat-vehicles">--</span>
@@ -78,6 +80,9 @@
             document.getElementById('stat-zones').textContent = data.total_zones;
             document.getElementById('stat-distance').textContent = data.total_distance_km;
             document.getElementById('stat-duration').textContent = Math.round(data.total_duration_min);
+            document.getElementById('stat-efficiency').textContent =
+                data.total_employees > 0 ?
+                    ((data.active_employees - data.unassigned_employees) / data.active_employees  * 100).toFixed(2) + '%' : '--';
 
             // Also refresh the map
             loadRoutes();

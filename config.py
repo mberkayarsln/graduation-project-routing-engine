@@ -46,7 +46,7 @@ class Config:
     USE_ZONE_PARTITIONING: bool = True
     OSM_FILE: str = "data/istanbul-center.osm.pbf"
     BARRIER_ROAD_TYPES: list[str] = [
-        "motorway", "motorway_link", "trunk", "trunk_link", "primary"
+        "motorway", "motorway_link", "trunk", "trunk_link"
     ]
     
     # =========================================================================
