@@ -25,6 +25,8 @@
             id="stat-employees">--</span></div>
     <div class="stat-item"><span class="stat-label">Active Employees</span><span class="stat-value"
             id="stat-active">--</span></div>
+    <div class="stat-item"><span class="stat-label">Unassigned</span><span class="stat-value"
+            id="stat-unassigned" style="color:#f64e60;">--</span></div>
     <div class="stat-item"><span class="stat-label">Active Routes</span><span class="stat-value"
             id="stat-routes">--</span></div>
     <div class="stat-item"><span class="stat-label">Vehicles</span><span class="stat-value" id="stat-vehicles">--</span>
@@ -69,6 +71,7 @@
 
             document.getElementById('stat-employees').textContent = data.total_employees;
             document.getElementById('stat-active').textContent = data.active_employees;
+            document.getElementById('stat-unassigned').textContent = data.unassigned_employees;
             document.getElementById('stat-routes').textContent = data.total_routes;
             document.getElementById('stat-vehicles').textContent = data.total_vehicles;
             document.getElementById('stat-clusters').textContent = data.total_clusters;

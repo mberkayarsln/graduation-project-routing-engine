@@ -59,6 +59,12 @@ def routes_page():
     return render_template('routes.html')
 
 
+@app.route('/clusters')
+def clusters_page():
+    """Cluster management page."""
+    return render_template('clusters.html')
+
+
 @app.route('/vehicles')
 def vehicles_page():
     """Vehicle management page."""
@@ -84,10 +90,11 @@ def api_stats():
         vehicles = vehicle_repo.find_all()
         zones = zone_repo.find_all()
         
-        # Calculate route stats
+        # Calculate route stats and track which clusters have routes
         total_distance = 0
         total_duration = 0
         route_count = 0
+        clusters_with_routes = set()
         
         for cluster in clusters:
             route = route_repo.find_by_cluster(cluster.id)
@@ -95,13 +102,17 @@ def api_stats():
                 total_distance += route.distance_km
                 total_duration += route.duration_min
                 route_count += 1
+                clusters_with_routes.add(cluster.id)
         
         excluded = sum(1 for e in employees if e.excluded)
+        # Unassigned = active employees whose cluster doesn't have a route
+        unassigned = sum(1 for e in employees if not e.excluded and (e.cluster_id is None or e.cluster_id not in clusters_with_routes))
         
         return jsonify({
             'total_employees': len(employees),
             'active_employees': len(employees) - excluded,
             'excluded_employees': excluded,
+            'unassigned_employees': unassigned,
             'total_clusters': len(clusters),
             'total_routes': route_count,
             'total_vehicles': len(vehicles),
@@ -167,6 +178,15 @@ def api_employees():
     """Get all employees."""
     try:
         employees = employee_repo.find_all()
+        clusters = cluster_repo.find_all()
+        
+        # Find which clusters have routes
+        clusters_with_routes = set()
+        for cluster in clusters:
+            route = route_repo.find_by_cluster(cluster.id)
+            if route:
+                clusters_with_routes.add(cluster.id)
+        
         return jsonify([{
             'id': e.id,
             'name': e.name or f'Employee {e.id}',
@@ -176,7 +196,8 @@ def api_employees():
             'cluster_id': e.cluster_id,
             'excluded': e.excluded,
             'exclusion_reason': e.exclusion_reason,
-            'pickup_point': e.pickup_point
+            'pickup_point': e.pickup_point,
+            'has_route': e.cluster_id is not None and e.cluster_id in clusters_with_routes
         } for e in employees])
     except Exception as e:
         return jsonify({'error': str(e)}), 500

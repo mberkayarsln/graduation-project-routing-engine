@@ -196,7 +196,11 @@
 
         employees.forEach(e => {
             const isSelected = selectedEmployees.has(e.id);
-            const color = isSelected ? '#3699ff' : (e.excluded ? '#f64e60' : '#10b981');
+            // Color: blue=selected, red=excluded or no route, green=has route
+            let color = '#10b981'; // default green (has route)
+            if (isSelected) color = '#3699ff';
+            else if (e.excluded) color = '#f64e60';
+            else if (!e.has_route) color = '#f64e60'; // red for no route
             const size = isSelected ? 12 : 8;
 
             const marker = L.marker([e.lat, e.lon], {

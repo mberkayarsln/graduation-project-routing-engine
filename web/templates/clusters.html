@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}Clusters - Routing Engine{% endblock %}
+{% block page_title %}Clusters{% endblock %}
+
+{% block header_actions %}
+<button class="btn btn-primary" onclick="loadClusters()">Refresh</button>
+{% endblock %}
+
+{% block content %}
+<div class="clusters-layout">
+    <!-- Cluster List Sidebar -->
+    <div class="clusters-sidebar">
+        <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+            <div class="card-header">
+                <h2>All Clusters</h2>
+                <span class="badge" id="cluster-count">0</span>
+            </div>
+            <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
+                <div id="clusters-container">
+                    <div class="loading" style="padding:20px;">Loading clusters...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="card cluster-map-container">
+        <div class="card-header">
+            <h2 id="map-title">All Clusters</h2>
+        </div>
+        <div id="cluster-map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block head %}
+<style>
+    .clusters-layout {
+        display: grid;
+        grid-template-columns: 350px 1fr;
+        gap: 20px;
+        height: calc(100vh - 140px);
+    }
+
+    .clusters-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+    }
+
+    .cluster-map-container {
+        height: 100%;
+        min-height: 500px;
+    }
+
+    #cluster-map {
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    .cluster-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .cluster-item:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .cluster-item.selected {
+        background: rgba(54, 153, 255, 0.1);
+        border-left: 3px solid var(--accent-primary);
+    }
+
+    .cluster-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .cluster-name {
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .cluster-meta {
+        font-size: 12px;
+        color: var(--text-muted);
+    }
+
+    .cluster-badge {
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .cluster-badge.has-route {
+        background: rgba(16, 185, 129, 0.2);
+        color: #10b981;
+    }
+
+    .cluster-badge.no-route {
+        background: rgba(246, 78, 96, 0.2);
+        color: #f64e60;
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let clusterMap = null;
+    let clusters = [];
+    let currentLayer = null;
+    let currentClusterIndex = -1;
+    const officeLocation = [41.1097, 29.0204];
+
+    // Colors matching employee map: green = has route, red = no route
+    function getClusterColor(hasRoute) {
+        return hasRoute ? '#10b981' : '#f64e60';
+    }
+
+    // Initialize map
+    function initMap() {
+        clusterMap = L.map('cluster-map').setView([41.0082, 28.9784], 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap, &copy; CARTO'
+        }).addTo(clusterMap);
+
+        L.marker(officeLocation, {
+            icon: L.divIcon({
+                className: 'office-icon',
+                html: '<div style="background:#6366f1;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
+                iconSize: [14, 14],
+                iconAnchor: [7, 7]
+            })
+        }).addTo(clusterMap).bindPopup('<b>Office</b>');
+    }
+
+    async function loadClusters() {
+        try {
+            const res = await fetch('/api/clusters');
+            clusters = await res.json();
+            document.getElementById('cluster-count').textContent = clusters.length;
+            renderClusterList();
+            renderAllClustersOnMap();
+        } catch (err) {
+            console.error('Error loading clusters:', err);
+            document.getElementById('clusters-container').innerHTML = '<div class="error" style="padding:20px;">Error loading clusters</div>';
+        }
+    }
+
+    function renderClusterList() {
+        const container = document.getElementById('clusters-container');
+
+        if (clusters.length === 0) {
+            container.innerHTML = '<div class="empty" style="padding:20px;">No clusters found</div>';
+            return;
+        }
+
+        container.innerHTML = clusters.map((c, i) => `
+            <div class="cluster-item" data-index="${i}" onclick="selectCluster(${i})">
+                <div class="cluster-color" style="background:${getClusterColor(c.has_route)};width:12px;height:12px;border-radius:50%;"></div>
+                <div class="cluster-info">
+                    <span class="cluster-name">Cluster ${c.id}</span>
+                    <span class="cluster-meta">${c.employee_count} employees • Zone ${c.zone_id || '-'}</span>
+                </div>
+                <span class="cluster-badge ${c.has_route ? 'has-route' : 'no-route'}">
+                    ${c.has_route ? 'Route' : 'No Route'}
+                </span>
+            </div>
+        `).join('');
+    }
+
+    function renderAllClustersOnMap() {
+        if (currentLayer) {
+            clusterMap.removeLayer(currentLayer);
+        }
+        currentLayer = L.layerGroup().addTo(clusterMap);
+
+        clusters.forEach((cluster, i) => {
+            const color = getClusterColor(cluster.has_route);
+
+            // Add cluster center marker
+            const centerIcon = L.divIcon({
+                className: 'cluster-center',
+                html: `<div style="background:${color};color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${cluster.id}</div>`,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
+            });
+            L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
+                .addTo(currentLayer)
+                .bindPopup(`<b>Cluster ${cluster.id}</b><br>${cluster.employee_count} employees<br>${cluster.has_route ? 'Has route' : 'No route'}`);
+        });
+
+        // Fit bounds to show all clusters
+        if (clusters.length > 0) {
+            const bounds = clusters.map(c => [c.center[0], c.center[1]]);
+            clusterMap.fitBounds(bounds, { padding: [50, 50] });
+        }
+    }
+
+    async function selectCluster(index) {
+        const cluster = clusters[index];
+        const color = getClusterColor(cluster.has_route);
+        currentClusterIndex = index;
+
+        // Update UI
+        document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('selected'));
+        document.querySelector(`.cluster-item[data-index="${index}"]`)?.classList.add('selected');
+        document.getElementById('map-title').textContent = `Cluster ${cluster.id}`;
+
+        // Clear and redraw
+        if (currentLayer) clusterMap.removeLayer(currentLayer);
+        currentLayer = L.layerGroup().addTo(clusterMap);
+
+        // Fetch cluster details with employees
+        try {
+            const res = await fetch(`/api/clusters/${cluster.id}`);
+            const clusterDetails = await res.json();
+
+            // Draw cluster center
+            const centerIcon = L.divIcon({
+                className: 'cluster-center',
+                html: `<div style="background:${color};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">${cluster.id}</div>`,
+                iconSize: [32, 32],
+                iconAnchor: [16, 16]
+            });
+            L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
+                .addTo(currentLayer)
+                .bindPopup(`<b>Cluster ${cluster.id} Center</b><br>${cluster.employee_count} employees`);
+
+            // Draw employees
+            if (clusterDetails.employees) {
+                const bounds = [[cluster.center[0], cluster.center[1]]];
+                
+                clusterDetails.employees.forEach(emp => {
+                    const empIcon = L.divIcon({
+                        className: 'employee-marker',
+                        html: `<div style="background:${color};width:8px;height:8px;border-radius:50%;border:1px solid #fff;opacity:0.8;"></div>`,
+                        iconSize: [8, 8],
+                        iconAnchor: [4, 4]
+                    });
+                    L.marker([emp.lat, emp.lon], { icon: empIcon })
+                        .addTo(currentLayer)
+                        .bindPopup(`<b>${emp.name}</b>`);
+                    bounds.push([emp.lat, emp.lon]);
+                });
+
+                clusterMap.fitBounds(bounds, { padding: [50, 50] });
+            }
+
+            // Draw route if exists
+            if (cluster.has_route && cluster.route_coordinates && cluster.route_coordinates.length > 1) {
+                const latlngs = cluster.route_coordinates.map(c => [c[0], c[1]]);
+                L.polyline(latlngs, { color: color, weight: 4, opacity: 0.8 }).addTo(currentLayer);
+            }
+
+        } catch (err) {
+            console.error('Error loading cluster details:', err);
+        }
+    }
+
+    // Initialize
+    initMap();
+    loadClusters();
+</script>
+{% endblock %}
