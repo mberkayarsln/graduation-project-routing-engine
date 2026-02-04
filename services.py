@@ -977,11 +977,12 @@ class ServicePlanner:
             if route:
                 routes.append(route)
         
+        print(f"    OK: {len(routes)} routes, {skipped} clusters skipped")
+        
         for c in self.clusters:
             if c.route:
                 c.route.match_employees_to_route(c.employees, self.safe_stops)
         
-        print(f"    OK: {len(routes)} routes, {skipped} skipped")
         return routes
     
     def assign_vehicles(self) -> list[Vehicle]:

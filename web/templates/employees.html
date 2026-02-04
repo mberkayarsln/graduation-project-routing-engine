@@ -128,7 +128,11 @@
         if (!marker || !emp) return;
 
         const isSelected = selectedEmployees.has(empId);
-        const color = isSelected ? '#3699ff' : (emp.excluded ? '#f64e60' : '#10b981');
+        // red=excluded, purple=active without route, green=has route
+        let color = '#10b981'; // default green
+        if (isSelected) color = '#3699ff';
+        else if (emp.excluded) color = '#f64e60';
+        else if (!emp.has_route) color = '#8b5cf6'; // purple
         const size = isSelected ? 12 : 8;
         marker.setIcon(L.divIcon({
             className: 'employee-marker',
@@ -196,11 +200,11 @@
 
         employees.forEach(e => {
             const isSelected = selectedEmployees.has(e.id);
-            // Color: blue=selected, red=excluded or no route, green=has route
+            // Color: blue=selected, red=excluded, purple=active without route, green=has route
             let color = '#10b981'; // default green (has route)
             if (isSelected) color = '#3699ff';
-            else if (e.excluded) color = '#f64e60';
-            else if (!e.has_route) color = '#f64e60'; // red for no route
+            else if (e.excluded) color = '#f64e60'; // red for excluded
+            else if (!e.has_route) color = '#8b5cf6'; // purple for active without route
             const size = isSelected ? 12 : 8;
 
             const marker = L.marker([e.lat, e.lon], {
