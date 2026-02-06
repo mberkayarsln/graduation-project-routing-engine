@@ -171,7 +171,7 @@
                 <div class="cluster-color" style="background:${getClusterColor(c.has_route)};width:12px;height:12px;border-radius:50%;"></div>
                 <div class="cluster-info">
                     <span class="cluster-name">Cluster ${c.id}</span>
-                    <span class="cluster-meta">${c.employee_count} employees • Zone ${c.zone_id || '-'}</span>
+                    <span class="cluster-meta">${c.employee_count} employees <span style="color:var(--border-light); margin:0 4px;">|</span> Zone ${c.zone_id || '-'}</span>
                 </div>
                 <span class="cluster-badge ${c.has_route ? 'has-route' : 'no-route'}">
                     ${c.has_route ? 'Route' : 'No Route'}
