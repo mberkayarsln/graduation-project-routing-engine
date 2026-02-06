@@ -297,10 +297,9 @@ class VisualizationService:
                     ).add_to(m)
                     
                     # Draw bus stop marker (only once per unique location)
-                    is_stop = hasattr(employee, 'pickup_type') and employee.pickup_type == 'stop'
                     stop_key = (round(target_location[0], 6), round(target_location[1], 6))
                     
-                    if is_stop and stop_key not in pickup_points_drawn:
+                    if stop_key not in pickup_points_drawn:
                         folium.Marker(
                             location=target_location,
                             icon=folium.DivIcon(
@@ -850,6 +849,7 @@ class ServicePlanner:
         self.stats = {}
         self.zone_assignments = {}
         self.safe_stops = []
+        self.all_employees: list[Employee] = []  # Includes excluded (for DB save)
         
         # Database integration
         self.use_database = getattr(config, 'USE_DATABASE', False)
@@ -869,11 +869,49 @@ class ServicePlanner:
         return t + timedelta(days=1) if datetime.now().hour >= 8 else t
     
     def generate_employees(self, count: int | None = None, seed: int | None = None) -> list[Employee]:
+        """Generate new employees or load from database if configured."""
+        # Try to load from database if configured
+        load_from_db = getattr(self.config, 'LOAD_EMPLOYEES_FROM_DB', True)
+        if load_from_db and self.use_database and self.employee_repo:
+            db_employees = self.load_employees_from_db()
+            if db_employees:
+                return db_employees
+        
+        # Generate new employees
         count = count or self.config.NUM_EMPLOYEES
         seed = seed if seed is not None else 42
         print(f"[1] Generating {count} employee locations...")
         self.employees = self.location_service.generate_employees(count, seed)
+        # For new employees, all are active, so all_employees = employees
+        self.all_employees = list(self.employees)
         print(f"    OK: {len(self.employees)} employees generated")
+        return self.employees
+    
+    def load_employees_from_db(self) -> list[Employee]:
+        """Load existing employees from database."""
+        if not self.employee_repo:
+            return []
+        
+        print("[1] Loading employees from database...")
+        all_employees = self.employee_repo.find_all()
+        
+        if not all_employees:
+            print("    No employees in database, will generate new ones")
+            return []
+        
+        # Clear old zone_id and cluster_id since zones/clusters are regenerated
+        for emp in all_employees:
+            emp.zone_id = None
+            emp.cluster_id = None
+        
+        # Store ALL employees (for saving back to DB with updated data)
+        self.all_employees = all_employees
+        
+        # But only use active (non-excluded) employees for routing
+        self.employees = [e for e in all_employees if not e.excluded]
+        excluded_count = len(all_employees) - len(self.employees)
+        
+        print(f"    OK: {len(self.employees)} active employees loaded ({excluded_count} excluded)")
         return self.employees
     
     def create_zones(self) -> dict:
@@ -939,11 +977,12 @@ class ServicePlanner:
             if route:
                 routes.append(route)
         
+        print(f"    OK: {len(routes)} routes, {skipped} clusters skipped")
+        
         for c in self.clusters:
             if c.route:
                 c.route.match_employees_to_route(c.employees, self.safe_stops)
         
-        print(f"    OK: {len(routes)} routes, {skipped} skipped")
         return routes
     
     def assign_vehicles(self) -> list[Vehicle]:
@@ -1019,21 +1058,58 @@ class ServicePlanner:
             print(f"[DB] Error initializing database: {e}")
             self.use_database = False
     
+    def clear_database(self):
+        """Clear route-related database tables (preserves employees)."""
+        if not self.use_database:
+            return
+        
+        print("[DB] Clearing route data (preserving employees)...")
+        try:
+            # Clear route-related tables but keep employees
+            self.db.execute("""
+                TRUNCATE TABLE 
+                    employee_stop_assignments,
+                    route_modifications,
+                    route_stops,
+                    vehicle_assignments,
+                    schedules,
+                    routes,
+                    vehicles,
+                    clusters,
+                    zones
+                CASCADE
+            """)
+            # Reset employee pickup points and cluster assignments
+            self.db.execute("""
+                UPDATE employees SET 
+                    pickup_point = NULL,
+                    cluster_id = NULL,
+                    zone_id = NULL
+                WHERE deleted_at IS NULL
+            """)
+            print("    ✓ Route data cleared, employees preserved")
+        except Exception as e:
+            print(f"    ✗ Error clearing tables: {e}")
+    
     def save_to_db(self) -> dict:
         """Save all data to database. Returns counts of saved records."""
         if not self.use_database:
             print("[DB] Database not enabled, skipping save")
             return {}
         
+        # Clear existing data first if configured
+        if getattr(self.config, 'TRUNCATE_DATABASE_ON_SAVE', False):
+            self.clear_database()
+        
         print("[DB] Saving to database...")
         counts = {}
         
         try:
             # Save zones first (employees reference zones)
+            zone_id_mapping = {}  # Map old index to new DB id
             if self.zone_service:
                 zones = self.zone_service.get_zones()
                 if zones:
-                    zone_id_mapping = {}  # Map old index to new DB id
                     for idx, zone_polygon in enumerate(zones):
                         # zones is a list of Shapely polygons
                         boundary_wkt = zone_polygon.wkt if hasattr(zone_polygon, 'wkt') else None
@@ -1045,13 +1121,20 @@ class ServicePlanner:
                         if emp.zone_id is not None and emp.zone_id in zone_id_mapping:
                             emp.zone_id = zone_id_mapping[emp.zone_id]
                     
+                    # Update cluster zone_ids to match DB IDs
+                    for cluster in self.clusters:
+                        if cluster.zone_id is not None and cluster.zone_id in zone_id_mapping:
+                            cluster.zone_id = zone_id_mapping[cluster.zone_id]
+                    
                     counts['zones'] = len(zones)
                     print(f"    ✓ Saved {counts['zones']} zones")
             
-            # Clear zone_id from employees if zones weren't saved (to avoid FK violation)
+            # Clear zone_id from employees and clusters if zones weren't saved (to avoid FK violation)
             if 'zones' not in counts:
                 for emp in self.employees:
                     emp.zone_id = None
+                for cluster in self.clusters:
+                    cluster.zone_id = None
             
             # Save clusters before employees (employees reference clusters)
             cluster_id_mapping = {}  # Map old cluster.id to new DB id
@@ -1074,9 +1157,11 @@ class ServicePlanner:
                 print(f"    ✓ Saved {counts['clusters']} clusters")
             
             # Save employees (now clusters exist for FK)
-            if self.employees:
-                self.employee_repo.save_batch(self.employees)
-                counts['employees'] = len(self.employees)
+            # Save ALL employees including excluded ones
+            employees_to_save = self.all_employees if self.all_employees else self.employees
+            if employees_to_save:
+                self.employee_repo.save_batch(employees_to_save)
+                counts['employees'] = len(employees_to_save)
                 print(f"    ✓ Saved {counts['employees']} employees")
             
             # Save vehicles before routes (routes reference vehicles)
@@ -1178,7 +1263,7 @@ class ServicePlanner:
         self.generate_stops()
         self.optimize_routes(use_stops=True)
         self.assign_vehicles()
-        self.generate_maps()
+        # self.generate_maps()  # Disabled - maps now shown in web UI
         self.print_summary()
         
         # Save to database if enabled

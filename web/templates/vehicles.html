@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Vehicles - Routing Engine{% endblock %}
+{% block page_title %}Vehicles{% endblock %}
+
+{% block header_actions %}
+<div class="search-box">
+    <input type="text" id="vehicle-search" placeholder="Search vehicles..." onkeyup="filterVehicles()">
+</div>
+<button class="btn btn-primary" onclick="loadVehicles()">Refresh</button>
+{% endblock %}
+
+{% block content %}
+<div class="table-card">
+    <table class="data-table" id="vehicles-table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Type</th>
+                <th>Driver</th>
+                <th>Capacity</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="vehicles-tbody">
+            <tr>
+                <td colspan="5" class="loading">Loading vehicles...</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Edit Vehicle Modal -->
+<div id="vehicle-modal" class="modal" style="display:none;">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h3 id="vehicle-modal-title">Edit Vehicle</h3>
+            <button class="modal-close" onclick="closeVehicleModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="vehicle-form">
+                <input type="hidden" id="edit-vehicle-id">
+
+                <div class="form-group">
+                    <label>Driver Name</label>
+                    <input type="text" id="edit-driver-name" placeholder="Enter driver name">
+                </div>
+
+                <div class="form-group">
+                    <label>Capacity</label>
+                    <input type="number" id="edit-capacity" min="1" max="50">
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let vehicles = [];
+
+    async function loadVehicles() {
+        try {
+            const res = await fetch('/api/vehicles');
+            vehicles = await res.json();
+            renderVehicles(vehicles);
+        } catch (err) {
+            console.error('Error loading vehicles:', err);
+            document.getElementById('vehicles-tbody').innerHTML =
+                '<tr><td colspan="5" class="error">Error loading vehicles</td></tr>';
+        }
+    }
+
+    function renderVehicles(data) {
+        const tbody = document.getElementById('vehicles-tbody');
+
+        if (data.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">No vehicles found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.map(v => `
+            <tr onclick="editVehicle(${v.id})" style="cursor:pointer;">
+                <td>${v.id}</td>
+                <td>${v.vehicle_type}</td>
+                <td>${v.driver_name || '<span style="color:var(--text-muted);">Not assigned</span>'}</td>
+                <td>${v.capacity} passengers</td>
+                <td>
+                    <button class="btn-icon" onclick="event.stopPropagation(); editVehicle(${v.id})" title="Edit vehicle">✎</button>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    function filterVehicles() {
+        const search = document.getElementById('vehicle-search').value.toLowerCase();
+
+        const filtered = vehicles.filter(v => {
+            return v.id.toString().includes(search) ||
+                v.vehicle_type.toLowerCase().includes(search) ||
+                (v.driver_name && v.driver_name.toLowerCase().includes(search));
+        });
+
+        renderVehicles(filtered);
+    }
+
+    function editVehicle(id) {
+        const vehicle = vehicles.find(v => v.id === id);
+        if (!vehicle) return;
+
+        document.getElementById('vehicle-modal-title').textContent = `Edit Vehicle #${vehicle.id}`;
+        document.getElementById('edit-vehicle-id').value = vehicle.id;
+        document.getElementById('edit-driver-name').value = vehicle.driver_name || '';
+        document.getElementById('edit-capacity').value = vehicle.capacity;
+
+        document.getElementById('vehicle-modal').style.display = 'flex';
+    }
+
+    function closeVehicleModal() {
+        document.getElementById('vehicle-modal').style.display = 'none';
+    }
+
+    document.getElementById('vehicle-form').addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const id = document.getElementById('edit-vehicle-id').value;
+        const data = {
+            driver_name: document.getElementById('edit-driver-name').value,
+            capacity: parseInt(document.getElementById('edit-capacity').value)
+        };
+
+        try {
+            const res = await fetch(`/api/vehicles/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                closeVehicleModal();
+                loadVehicles();
+            } else {
+                alert('Error saving changes');
+            }
+        } catch (err) {
+            console.error('Error:', err);
+            alert('Error saving changes');
+        }
+    });
+
+    // Initialize
+    loadVehicles();
+</script>
+{% endblock %}

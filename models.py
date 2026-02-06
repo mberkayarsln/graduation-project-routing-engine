@@ -35,11 +35,9 @@ class Employee:
         self.excluded: bool = False
         self.exclusion_reason: str = ""
         self.pickup_point: tuple[float, float] | None = None
-        self.pickup_type: str = "route"
     
-    def set_pickup_point(self, lat: float, lon: float, type: str = "route") -> None:
+    def set_pickup_point(self, lat: float, lon: float, type: str = None) -> None:
         self.pickup_point = (lat, lon)
-        self.pickup_type = type
     
     def distance_to(self, other_lat: float, other_lon: float) -> float:
         return haversine(self.lat, self.lon, other_lat, other_lon)
@@ -295,13 +293,15 @@ class Route:
                     
                     return matched_count
             
-            # Geometric fallback
+            # Only use real bus stops from safe_stops - no custom pickup point generation
+            if not valid_route_stops:
+                return 0
+            
             valid_stops_multipoint = None
-            if valid_route_stops:
-                try:
-                    valid_stops_multipoint = MultiPoint([(s[0], s[1]) for s in valid_route_stops])
-                except Exception:
-                    pass
+            try:
+                valid_stops_multipoint = MultiPoint([(s[0], s[1]) for s in valid_route_stops])
+            except Exception:
+                return 0
             
             for employee in employees:
                 if employee.excluded:
@@ -309,18 +309,11 @@ class Route:
                 
                 emp_point = Point(employee.lat, employee.lon)
                 
-                distance_on_line = line.project(emp_point)
-                ideal_point = line.interpolate(distance_on_line)
-                final_pickup = (ideal_point.x, ideal_point.y)
-                pickup_type = "route"
-                
+                # Only assign to real bus stops, not projected points on the route
                 if valid_stops_multipoint:
                     nearest_stop = nearest_points(emp_point, valid_stops_multipoint)[1]
-                    final_pickup = (nearest_stop.x, nearest_stop.y)
-                    pickup_type = "stop"
-                        
-                employee.set_pickup_point(final_pickup[0], final_pickup[1], type=pickup_type)
-                matched_count += 1
+                    employee.set_pickup_point(nearest_stop.x, nearest_stop.y, type="stop")
+                    matched_count += 1
                 
             return matched_count
             

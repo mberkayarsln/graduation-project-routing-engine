@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+
+{% block title %}Routes - Routing Engine{% endblock %}
+{% block page_title %}Routes{% endblock %}
+
+{% block head %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
+<style>
+    .routes-layout {
+        display: grid;
+        grid-template-columns: 380px 1fr;
+        gap: 20px;
+        height: calc(100vh - 140px);
+    }
+
+    .routes-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        overflow-y: auto;
+    }
+
+    .route-map-container {
+        height: 100%;
+        min-height: 500px;
+    }
+
+    #route-map {
+        height: 100%;
+        border-radius: 4px;
+    }
+
+    .route-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 15px;
+        border-bottom: 1px solid var(--border-color);
+        cursor: pointer;
+        transition: background 0.2s ease;
+    }
+
+    .route-item:hover {
+        background: rgba(255, 255, 255, 0.02);
+    }
+
+    .route-item.selected {
+        background: rgba(54, 153, 255, 0.1);
+        border-left: 3px solid var(--accent-primary);
+    }
+
+    .route-actions {
+        display: flex;
+        gap: 6px;
+    }
+
+    .details-content {
+        padding: 15px;
+        border-top: 1px solid var(--border-color);
+        background: var(--bg-sidebar);
+    }
+
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 15px;
+    }
+
+    .info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .info-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+    }
+
+    .info-value {
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--text-primary);
+    }
+
+    .edit-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .btn-success {
+        background: #0bb783;
+        color: white;
+    }
+
+    .btn-success:hover {
+        background: #099268;
+    }
+
+    .help-text {
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 10px;
+    }
+
+    .employee-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .employee-chip {
+        padding: 4px 8px;
+        background: var(--bg-card);
+        border-radius: 3px;
+        font-size: 11px;
+        color: var(--text-secondary);
+    }
+
+    .leaflet-routing-container {
+        display: none !important;
+    }
+
+    .toast {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 12px 24px;
+        background: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 4px;
+        color: var(--text-primary);
+        z-index: 2000;
+        animation: slideIn 0.3s ease;
+    }
+
+    .toast.success {
+        border-left: 4px solid #0bb783;
+    }
+
+    .toast.error {
+        border-left: 4px solid #f64e60;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateY(20px);
+            opacity: 0;
+        }
+
+        to {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    }
+
+    /* Loading spinner */
+    .spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: #fff;
+        animation: spin 0.8s linear infinite;
+        margin-right: 6px;
+        vertical-align: middle;
+    }
+
+    @keyframes spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .btn:disabled {
+        opacity: 0.7;
+        cursor: not-allowed;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="routes-layout">
+    <!-- Route List Sidebar -->
+    <div class="routes-sidebar">
+        <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+            <div class="card-header">
+                <h2>All Routes</h2>
+                <span class="badge" id="route-count">0</span>
+            </div>
+            <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
+                <div id="routes-container">
+                    <div class="loading" style="padding:20px;">Loading routes...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Map -->
+    <div class="card route-map-container">
+        <div class="card-header">
+            <h2 id="map-title">Select a Route</h2>
+        </div>
+        <div id="route-map"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
+<script>
+    let routeMap = null;
+    let routes = [];
+    let currentLayer = null;
+    let currentRouteIndex = -1;
+    let routingControl = null;
+    let lastCalculatedRoute = null;
+    let originalWaypoints = [];
+    let isEditMode = false;
+    const officeLocation = [41.1097, 29.0204];
+
+    const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#FF9FF3', '#54A0FF'];
+
+    // Initialize map
+    function initMap() {
+        routeMap = L.map('route-map').setView([41.0082, 28.9784], 11);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap, &copy; CARTO'
+        }).addTo(routeMap);
+
+        L.marker(officeLocation, {
+            icon: L.divIcon({ className: 'office-icon', html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [12, 12] })
+        }).addTo(routeMap).bindPopup('<b>Office</b>');
+    }
+
+    async function loadRoutes() {
+        try {
+            const res = await fetch('/api/routes');
+            routes = await res.json();
+            document.getElementById('route-count').textContent = routes.length;
+            renderRouteList();
+            renderAllRoutesOnMap();
+        } catch (err) {
+            console.error('Error loading routes:', err);
+            document.getElementById('routes-container').innerHTML = '<div class="error" style="padding:20px;">Error loading routes</div>';
+        }
+    }
+
+    function renderRouteList() {
+        const container = document.getElementById('routes-container');
+
+        if (routes.length === 0) {
+            container.innerHTML = '<div class="empty" style="padding:20px;">No routes found</div>';
+            return;
+        }
+
+        container.innerHTML = routes.map((r, i) => `
+            <div class="route-item" data-index="${i}">
+                <div class="route-color" style="background:${colors[i % colors.length]};width:10px;height:10px;border-radius:50%;"></div>
+                <div class="route-info" style="flex:1;" onclick="selectRoute(${i})">
+                    <span class="route-name" style="font-weight:600;">Route ${i + 1}</span>
+                    <span class="route-meta" style="font-size:12px;color:var(--text-muted);">${r.distance_km} km • ${Math.round(r.duration_min)} min • ${r.employee_count} employees</span>
+                </div>
+                <div class="route-actions">
+                    <button class="btn btn-sm btn-secondary" onclick="showRouteDetails(${i})">Details</button>
+                </div>
+            </div>
+            <div id="details-${i}" class="details-content" style="display:none;">
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Distance</span>
+                        <span class="info-value">${r.distance_km} km</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Duration</span>
+                        <span class="info-value">${Math.round(r.duration_min)} min</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Stops</span>
+                        <span class="info-value">${r.stop_count}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Employees</span>
+                        <span class="info-value">${r.employee_count}</span>
+                    </div>
+                </div>
+                <div>
+                    <span class="info-label">Employees</span>
+                    <div id="employees-${i}" class="employee-chips" style="margin-top:6px;">Loading...</div>
+                </div>
+                <div class="edit-actions">
+                    <button class="btn btn-sm btn-primary" onclick="enableEditMode(${i})">Edit Route</button>
+                    <button class="btn btn-sm btn-secondary" onclick="closeDetails(${i})">Close</button>
+                </div>
+                <p class="help-text">Click "Edit Route" to drag waypoints and modify the path.</p>
+            </div>
+        `).join('');
+    }
+
+    function renderAllRoutesOnMap() {
+        routes.forEach((route, i) => {
+            const color = colors[i % colors.length];
+            const pathCoords = route.coordinates && route.coordinates.length > 1 ? route.coordinates : route.stops;
+            if (pathCoords && pathCoords.length > 1) {
+                const latlngs = pathCoords.map(s => [s[0], s[1]]);
+                L.polyline(latlngs, { color: color, weight: 2, opacity: 0.5 }).addTo(routeMap);
+            }
+        });
+    }
+
+    function selectRoute(index) {
+        const route = routes[index];
+        const color = colors[index % colors.length];
+        currentRouteIndex = index;
+
+        // Update UI
+        document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
+        document.querySelector(`.route-item[data-index="${index}"]`)?.classList.add('selected');
+        document.getElementById('map-title').textContent = `Route ${index + 1}`;
+
+        // Clear previous
+        if (currentLayer) routeMap.removeLayer(currentLayer);
+        if (routingControl) {
+            routeMap.removeControl(routingControl);
+            routingControl = null;
+        }
+
+        // Draw route
+        const pathCoords = route.coordinates && route.coordinates.length > 1 ? route.coordinates : route.stops;
+        if (pathCoords && pathCoords.length > 1) {
+            const latlngs = pathCoords.map(s => [s[0], s[1]]);
+            currentLayer = L.layerGroup().addTo(routeMap);
+
+            L.polyline(latlngs, { color: color, weight: 5, opacity: 1 }).addTo(currentLayer);
+
+            route.stops.forEach((stop, i) => {
+                let icon;
+                if (i === 0) {
+                    icon = L.divIcon({ className: 'start', html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [12, 12] });
+                } else if (i === route.stops.length - 1) {
+                    icon = L.divIcon({ className: 'end', html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [12, 12] });
+                } else {
+                    icon = L.divIcon({ className: 'stop', html: `<div style="background:${color};width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div>`, iconSize: [10, 10] });
+                }
+                L.marker([stop[0], stop[1]], { icon }).addTo(currentLayer).bindPopup(`Stop ${i + 1}`);
+            });
+
+            routeMap.fitBounds(latlngs);
+        }
+
+        isEditMode = false;
+    }
+
+    async function showRouteDetails(index) {
+        // Select the route first
+        selectRoute(index);
+
+        // Toggle details panel
+        const detailsEl = document.getElementById(`details-${index}`);
+        const isVisible = detailsEl.style.display !== 'none';
+
+        // Hide all details first
+        document.querySelectorAll('.details-content').forEach(el => el.style.display = 'none');
+
+        if (!isVisible) {
+            detailsEl.style.display = 'block';
+
+            // Load employees
+            const route = routes[index];
+            try {
+                const res = await fetch(`/api/clusters/${route.cluster_id}`);
+                const cluster = await res.json();
+
+                if (cluster.error) {
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Cluster not found</span>';
+                    return;
+                }
+
+                if (cluster.employees && cluster.employees.length > 0) {
+                    // Show employee names in details panel
+                    document.getElementById(`employees-${index}`).innerHTML = cluster.employees.map(e =>
+                        `<span class="employee-chip">${e.name}</span>`
+                    ).join('');
+
+                    // Add markers to map
+                    if (currentLayer) {
+                        // Collect unique pickup points (bus stops)
+                        const pickupPoints = new Map();
+                        cluster.employees.forEach(emp => {
+                            if (emp.pickup_point) {
+                                const key = `${emp.pickup_point[0].toFixed(5)},${emp.pickup_point[1].toFixed(5)}`;
+                                if (!pickupPoints.has(key)) {
+                                    pickupPoints.set(key, { lat: emp.pickup_point[0], lon: emp.pickup_point[1], employees: [] });
+                                }
+                                pickupPoints.get(key).employees.push(emp.name);
+                            }
+                        });
+
+                        // Add bus stop markers with real names (only for stops that exist in OSM)
+                        if (pickupPoints.size > 0) {
+                            // Fetch real stop names from API
+                            const coords = Array.from(pickupPoints.values()).map(s => [s.lat, s.lon]);
+                            fetch('/api/stops/names', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ coordinates: coords })
+                            })
+                                .then(res => res.json())
+                                .then(stopNames => {
+                                    pickupPoints.forEach((stop, key) => {
+                                        const stopName = stopNames[key];
+                                        // Only show marker if it's a real bus stop (has a name from OSM, not generic fallback)
+                                        if (stopName && stopName !== 'Bus Stop') {
+                                            const stopIcon = L.divIcon({
+                                                className: 'bus-stop-marker',
+                                                html: '<div style="background:#ffa800;width:14px;height:14px;border-radius:3px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:#fff;">B</div>',
+                                                iconSize: [14, 14],
+                                                iconAnchor: [7, 7]
+                                            });
+                                            L.marker([stop.lat, stop.lon], { icon: stopIcon })
+                                                .addTo(currentLayer)
+                                                .bindPopup(`<b>${stopName}</b><br>${stop.employees.length} employee(s):<br>${stop.employees.join('<br>')}`);
+                                        }
+                                    });
+                                })
+                                .catch(err => {
+                                    console.error('Error fetching stop names:', err);
+                                });
+                        }
+
+                        // Add employee home markers and lines to their pickup points
+                        cluster.employees.forEach(emp => {
+                            const empIcon = L.divIcon({
+                                className: 'employee-marker',
+                                html: '<div style="background:#f64e60;width:6px;height:6px;border-radius:50%;border:1px solid #fff;"></div>',
+                                iconSize: [6, 6],
+                                iconAnchor: [3, 3]
+                            });
+                            L.marker([emp.lat, emp.lon], { icon: empIcon })
+                                .addTo(currentLayer)
+                                .bindPopup(`<b>${emp.name}</b><br>Home location`);
+
+                            // Draw line from employee to their pickup point
+                            if (emp.pickup_point) {
+                                L.polyline(
+                                    [[emp.lat, emp.lon], [emp.pickup_point[0], emp.pickup_point[1]]],
+                                    {
+                                        color: '#f64e60',
+                                        weight: 1,
+                                        opacity: 0.5,
+                                        dashArray: '3, 5'
+                                    }
+                                ).addTo(currentLayer);
+                            }
+                        });
+                    }
+                } else {
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">No employees assigned</span>';
+                }
+            } catch (err) {
+                console.error('Error loading cluster:', err);
+                document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Error loading employees</span>';
+            }
+        }
+    }
+
+    function closeDetails(index) {
+        document.getElementById(`details-${index}`).style.display = 'none';
+        if (isEditMode) {
+            disableEditMode();
+        }
+    }
+
+    function enableEditMode(index) {
+        selectRoute(index);
+
+        const route = routes[index];
+        const color = colors[index % colors.length];
+
+        // Clear current layer
+        if (currentLayer) routeMap.removeLayer(currentLayer);
+        currentLayer = null;
+
+        // Setup waypoints
+        const waypoints = route.stops.map(s => L.latLng(s[0], s[1]));
+        originalWaypoints = waypoints.map(wp => L.latLng(wp.lat, wp.lng));
+
+        // Create routing control
+        routingControl = L.Routing.control({
+            router: L.Routing.osrmv1({ serviceUrl: 'http://localhost:5001/route/v1' }),
+            waypoints: waypoints,
+            routeWhileDragging: true,
+            draggableWaypoints: true,
+            addWaypoints: true,  // Enable adding waypoints by dragging anywhere on the line
+            fitSelectedRoutes: true,
+            showAlternatives: false,
+            lineOptions: {
+                styles: [{ color: color, opacity: 0.9, weight: 6 }],
+                extendToWaypoints: true,
+                missingRouteTolerance: 0
+            },
+            createMarker: function (i, waypoint, n) {
+                return L.marker(waypoint.latLng, {
+                    draggable: true,
+                    icon: L.divIcon({
+                        className: 'waypoint-marker',
+                        html: `<div style="background:${color};color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid #fff;">${i + 1}</div>`,
+                        iconSize: [24, 24],
+                        iconAnchor: [12, 12]
+                    })
+                }).bindPopup(`<b>Stop ${i + 1}</b><br>Drag to move`);
+            }
+        }).addTo(routeMap);
+
+        routingControl.on('routesfound', function (e) {
+            lastCalculatedRoute = e.routes[0];
+        });
+
+        isEditMode = true;
+
+        // Update details panel with edit buttons
+        const detailsEl = document.getElementById(`details-${index}`);
+        detailsEl.querySelector('.edit-actions').innerHTML = `
+            <button class="btn btn-sm btn-success" onclick="saveRouteChanges(${index})">Save Changes</button>
+            <button class="btn btn-sm btn-secondary" onclick="resetRouteEdit(${index})">Reset</button>
+            <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${index})">Cancel</button>
+        `;
+
+        showToast('Edit mode enabled - drag waypoints to modify route', 'info');
+    }
+
+
+
+    function disableEditMode() {
+        if (routingControl) {
+            routeMap.removeControl(routingControl);
+            routingControl = null;
+        }
+        isEditMode = false;
+
+        // Redraw static route
+        if (currentRouteIndex >= 0) {
+            selectRoute(currentRouteIndex);
+        }
+    }
+
+    function resetRouteEdit(index) {
+        if (routingControl && originalWaypoints.length > 0) {
+            routingControl.setWaypoints(originalWaypoints);
+            showToast('Route reset to original', 'info');
+        }
+    }
+
+    function cancelEdit(index) {
+        disableEditMode();
+        showRouteDetails(index);
+
+        // Restore original edit actions
+        const detailsEl = document.getElementById(`details-${index}`);
+        detailsEl.querySelector('.edit-actions').innerHTML = `
+            <button class="btn btn-sm btn-primary" onclick="enableEditMode(${index})">Edit Route</button>
+            <button class="btn btn-sm btn-secondary" onclick="closeDetails(${index})">Close</button>
+        `;
+    }
+
+    async function saveRouteChanges(index) {
+        if (!routingControl || !lastCalculatedRoute) {
+            showToast('No changes to save', 'error');
+            return;
+        }
+
+        // Show loading state
+        const detailsEl = document.getElementById(`details-${index}`);
+        const saveBtn = detailsEl.querySelector('.btn-success');
+        const originalText = saveBtn.innerHTML;
+        saveBtn.innerHTML = '<span class="spinner"></span>Saving...';
+        saveBtn.disabled = true;
+
+        const waypoints = routingControl.getWaypoints()
+            .filter(wp => wp.latLng)
+            .map(wp => [wp.latLng.lat, wp.latLng.lng]);
+
+        const coordinates = lastCalculatedRoute.coordinates.map(c => [c.lat, c.lng]);
+        const distance_km = parseFloat((lastCalculatedRoute.summary.totalDistance / 1000).toFixed(2));
+        const duration_min = Math.round(lastCalculatedRoute.summary.totalTime / 60);
+
+        const route = routes[index];
+
+        try {
+            const res = await fetch(`/api/routes/${route.cluster_id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    stops: waypoints,
+                    coordinates: coordinates,
+                    distance_km: distance_km,
+                    duration_min: duration_min
+                })
+            });
+
+            if (res.ok) {
+                const result = await res.json();
+                const reassignedCount = result.employees_reassigned || 0;
+                showToast(`Route saved! ${reassignedCount} employee(s) reassigned to new stops.`, 'success');
+
+                // Update local data
+                routes[index].stops = waypoints;
+                routes[index].coordinates = coordinates;
+                routes[index].distance_km = distance_km;
+                routes[index].duration_min = duration_min;
+                routes[index].optimized = false;
+
+                originalWaypoints = waypoints.map(s => L.latLng(s[0], s[1]));
+
+                // Update UI
+                renderRouteList();
+                cancelEdit(index);
+            } else {
+                showToast('Error saving route', 'error');
+                saveBtn.innerHTML = originalText;
+                saveBtn.disabled = false;
+            }
+        } catch (err) {
+            console.error('Error saving route:', err);
+            showToast('Error saving route', 'error');
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+        }
+    }
+
+    function showToast(message, type = 'info') {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    // Initialize
+    initMap();
+    loadRoutes();
+</script>
+{% endblock %}
