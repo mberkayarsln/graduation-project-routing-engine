@@ -35,7 +35,7 @@ def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
 class DataGenerator:
     """Generates employee locations within urban residential areas."""
     
-    def __init__(self, osm_file: str = "data/istanbul-center.osm.pbf") -> None:
+    def __init__(self, osm_file: str = "data/istanbul-anatolian.osm.pbf") -> None:
         self.osm_file = osm_file
         self._osm: OSM | None = None
         self._urban_area = None

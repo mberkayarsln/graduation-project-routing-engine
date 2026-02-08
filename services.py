@@ -33,7 +33,7 @@ class LocationService:
     def __init__(self, config) -> None:
         self.config = config
         self.office_location = config.OFFICE_LOCATION
-        self.data_generator = DataGenerator()
+        self.data_generator = DataGenerator(osm_file=config.OSM_FILE)
     
     def generate_employees(self, count: int, seed: int | None = None) -> list[Employee]:
         df = self.data_generator.generate(n=count, seed=seed)

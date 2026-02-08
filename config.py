@@ -16,7 +16,7 @@ class Config:
     # =========================================================================
     # Office Location
     # =========================================================================
-    OFFICE_LOCATION: tuple[float, float] = (41.1097, 29.0204)
+    OFFICE_LOCATION: tuple[float, float] = (40.837384, 29.412109)
     
     # =========================================================================
     # Employee Generation
@@ -44,7 +44,7 @@ class Config:
     # Zone Partitioning
     # =========================================================================
     USE_ZONE_PARTITIONING: bool = True
-    OSM_FILE: str = "data/istanbul-center.osm.pbf"
+    OSM_FILE: str = "data/istanbul-anatolian.osm.pbf"
     BARRIER_ROAD_TYPES: list[str] = [
         "motorway", "motorway_link", "trunk", "trunk_link"
     ]
@@ -83,7 +83,7 @@ class Config:
     
     # Load employees from database instead of generating new ones
     # Set to False to generate new random employees each run
-    LOAD_EMPLOYEES_FROM_DB: bool = True
+    LOAD_EMPLOYEES_FROM_DB: bool = False
     
     # Clear all existing data before saving new data (for development/testing)
     TRUNCATE_DATABASE_ON_SAVE: bool = True
