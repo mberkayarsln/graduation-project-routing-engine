@@ -121,7 +121,7 @@
     let clusters = [];
     let currentLayer = null;
     let currentClusterIndex = -1;
-    const officeLocation = [41.1097, 29.0204];
+    const officeLocation = [40.837384, 29.412109];
 
     // Colors matching employee map: green = has route, red = no route
     function getClusterColor(hasRoute) {
@@ -130,7 +130,7 @@
 
     // Initialize map
     function initMap() {
-        clusterMap = L.map('cluster-map').setView([41.0082, 28.9784], 11);
+        clusterMap = L.map('cluster-map').setView([40.95, 29.2], 11);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap, &copy; CARTO'
         }).addTo(clusterMap);

@@ -181,13 +181,13 @@
     let currentRouteIndex = -1;
     let originalWaypoints = [];
     let employeeMarkers = [];
-    const officeLocation = [41.1097, 29.0204];
+    const officeLocation = [40.837384, 29.412109];
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#FF9FF3', '#54A0FF'];
 
     // Initialize map
     function initMap() {
-        editMap = L.map('edit-map').setView([41.0082, 28.9784], 11);
+        editMap = L.map('edit-map').setView([40.95, 29.2], 11);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap, &copy; CARTO'
         }).addTo(editMap);

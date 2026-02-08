@@ -176,14 +176,14 @@
     }
 
     function initMainMap() {
-        mainMap = L.map('employees-map').setView([41.0082, 28.9784], 11);
+        mainMap = L.map('employees-map').setView([40.95, 29.2], 11);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap, &copy; CARTO'
         }).addTo(mainMap);
         employeeMarkerLayer = L.layerGroup().addTo(mainMap);
 
         // Office marker with building icon
-        L.marker([41.1097, 29.0204], {
+        L.marker([40.837384, 29.412109], {
             icon: L.divIcon({
                 className: 'office-marker',
                 html: `<div style="background:#3699ff;width:20px;height:20px;border-radius:6px;border:1px solid #fff;display:flex;align-items:center;justify-content:center;">

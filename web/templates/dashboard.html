@@ -46,7 +46,7 @@
 {% block scripts %}
 <script>
     // Initialize map
-    const map = L.map('overview-map').setView([41.0082, 28.9784], 11);
+    const map = L.map('overview-map').setView([40.95, 29.2], 11);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap, &copy; CARTO'
     }).addTo(map);
@@ -62,7 +62,7 @@
         </div>`,
         iconSize: [20, 20], iconAnchor: [10, 10]
     });
-    L.marker([41.1097, 29.0204], { icon: officeIcon }).addTo(map)
+    L.marker([40.837384, 29.412109], { icon: officeIcon }).addTo(map)
         .bindPopup('<b>Office</b>');
 
     // Load stats and refresh map
