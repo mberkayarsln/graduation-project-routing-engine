@@ -442,9 +442,18 @@
                                 iconSize: [6, 6],
                                 iconAnchor: [3, 3]
                             });
+                            
+                            // Show distance to pickup point (from OSRM)
+                            let popupContent = `<b>${emp.name}</b><br>Home location`;
+                            if (emp.walking_distance != null) {
+                                popupContent += `<br><br><b>Distance to Stop:</b> ${Math.round(emp.walking_distance)} m`;
+                            } else if (emp.pickup_point) {
+                                popupContent += `<br><br><i>Distance not available</i>`;
+                            }
+                            
                             L.marker([emp.lat, emp.lon], { icon: empIcon })
                                 .addTo(currentLayer)
-                                .bindPopup(`<b>${emp.name}</b><br>Home location`);
+                                .bindPopup(popupContent);
 
                             // Draw line from employee to their pickup point
                             if (emp.pickup_point) {

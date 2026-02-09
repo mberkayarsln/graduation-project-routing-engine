@@ -35,9 +35,11 @@ class Employee:
         self.excluded: bool = False
         self.exclusion_reason: str = ""
         self.pickup_point: tuple[float, float] | None = None
+        self.walking_distance: float | None = None  # Distance to pickup point in meters
     
-    def set_pickup_point(self, lat: float, lon: float, type: str = None) -> None:
+    def set_pickup_point(self, lat: float, lon: float, type: str = None, walking_distance: float = None) -> None:
         self.pickup_point = (lat, lon)
+        self.walking_distance = walking_distance
     
     def distance_to(self, other_lat: float, other_lon: float) -> float:
         return haversine(self.lat, self.lon, other_lat, other_lon)
@@ -288,7 +290,7 @@ class Route:
                         
                         if best_stop_idx != -1:
                             best_stop = valid_route_stops[best_stop_idx]
-                            employee.set_pickup_point(best_stop[0], best_stop[1], type="stop")
+                            employee.set_pickup_point(best_stop[0], best_stop[1], type="stop", walking_distance=min_dist_meters)
                             matched_count += 1
                     
                     return matched_count

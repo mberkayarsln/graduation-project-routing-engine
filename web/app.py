@@ -283,6 +283,29 @@ def api_cluster(id):
         
         route = route_repo.find_by_cluster(id)
         
+        # Calculate walking distances using OSRM
+        walking_distances = {}
+        employees_with_pickup = [e for e in c.employees if e.pickup_point]
+        
+        if employees_with_pickup:
+            try:
+                from routing import OSRMRouter
+                router = OSRMRouter()
+                
+                emp_locs = [(e.lat, e.lon) for e in employees_with_pickup]
+                pickup_locs = [e.pickup_point for e in employees_with_pickup]
+                
+                # Get distance matrix from employees to their pickup points
+                distances = router.get_distance_matrix(emp_locs, pickup_locs, profile='foot')
+                
+                if distances:
+                    for i, emp in enumerate(employees_with_pickup):
+                        # Distance from employee i to their own pickup point (diagonal)
+                        if distances[i] and len(distances[i]) > i:
+                            walking_distances[emp.id] = distances[i][i]
+            except Exception as e:
+                print(f"Error calculating walking distances: {e}")
+        
         return jsonify({
             'id': c.id,
             'center': c.center,
@@ -292,7 +315,8 @@ def api_cluster(id):
                 'name': e.name or f'Employee {e.id}',
                 'lat': e.lat,
                 'lon': e.lon,
-                'pickup_point': e.pickup_point
+                'pickup_point': e.pickup_point,
+                'walking_distance': walking_distances.get(e.id)
             } for e in c.employees],
             'route': {
                 'distance_km': route.distance_km,
