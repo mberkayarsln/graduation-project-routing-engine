@@ -36,6 +36,18 @@ cluster_repo = ClusterRepository(db)
 route_repo = RouteRepository(db)
 vehicle_repo = VehicleRepository(db)
 
+# Cache for transit stops to avoid reloading OSM data on every request
+_transit_stops_cache: list[tuple[float, float]] | None = None
+
+
+def _get_transit_stops_cached() -> list[tuple[float, float]]:
+    global _transit_stops_cache
+    if _transit_stops_cache is None:
+        from utils import DataGenerator
+        data_gen = DataGenerator()
+        _transit_stops_cache = data_gen.get_transit_stops()
+    return _transit_stops_cache
+
 
 # =============================================================================
 # Web Pages
@@ -124,16 +136,31 @@ def api_stats():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/optimization-mode', methods=['GET'])
+def api_get_optimization_mode():
+    """Get current optimization mode and available presets."""
+    from config import Config
+    return jsonify({
+        'current_mode': getattr(Config, 'OPTIMIZATION_MODE', 'balanced'),
+        'presets': Config.OPTIMIZATION_PRESETS
+    })
+
+
 @app.route('/api/generate-routes', methods=['POST'])
 def api_generate_routes():
-    """Trigger route generation."""
+    """Trigger route generation. Accepts optional JSON body: { "mode": "budget"|"balanced"|"employee" }"""
     try:
         from config import Config
         from services import ServicePlanner
         
-        # Run route generation
+        # Read optimization mode from request
+        mode = None
+        if request.is_json and request.json:
+            mode = request.json.get('mode')
+        
+        # Run route generation with selected mode
         planner = ServicePlanner(Config)
-        planner.run()
+        planner.run(optimization_mode=mode)
         
         # Return updated stats
         employees = employee_repo.find_all()
@@ -333,20 +360,31 @@ def api_cluster(id):
 def api_routes():
     """Get all routes with cluster info."""
     try:
-        clusters = cluster_repo.find_all(include_employees=True)
+        include_bus_stops = request.args.get('include_bus_stops', 'false').lower() == 'true'
+        clusters = cluster_repo.find_all(include_employees=False)
+        all_transit_stops = _get_transit_stops_cached() if include_bus_stops else []
+        
         routes = []
         for c in clusters:
             route = route_repo.find_by_cluster(c.id)
             if route:
+                # Find all bus stops along this route only if requested
+                bus_stops = []
+                if include_bus_stops:
+                    bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=150)
+                employee_count = employee_repo.count_by_cluster(c.id)
+                
                 routes.append({
                     'cluster_id': c.id,
                     'center': c.center,
                     'distance_km': route.distance_km,
                     'duration_min': route.duration_min,
                     'stops': route.stops,
+                    'bus_stops': bus_stops,
                     'coordinates': route.coordinates,
                     'stop_count': len(route.stops),
-                    'employee_count': len(c.employees),
+                    'bus_stop_count': len(bus_stops),
+                    'employee_count': employee_count,
                     'optimized': route.optimized
                 })
         return jsonify(routes)
@@ -384,13 +422,23 @@ def api_update_route(cluster_id):
         
         # Reassign employees to nearest stops on the modified route
         matched_count = 0
+        bus_stops = []
         if cluster and cluster.employees and route.coordinates:
             # Load transit stops (bus stops) for proper matching
             from utils import DataGenerator
             data_gen = DataGenerator()
             safe_stops = data_gen.get_transit_stops()
+            from config import Config
             
-            matched_count = route.match_employees_to_route(cluster.employees, safe_stops)
+            # Find all bus stops along the new route
+            bus_stops = route.find_all_stops_along_route(safe_stops, buffer_meters=150)
+            
+            stop_buffer = getattr(Config, 'ROUTE_STOP_BUFFER_METERS', 150)
+            matched_count = route.match_employees_to_route(
+                cluster.employees,
+                safe_stops,
+                buffer_meters=stop_buffer,
+            )
             
             # Update employee pickup points in database
             if matched_count > 0:
@@ -402,7 +450,9 @@ def api_update_route(cluster_id):
             
         return jsonify({
             'success': True, 
-            'employees_reassigned': matched_count
+            'employees_reassigned': matched_count,
+            'bus_stops': bus_stops,
+            'bus_stop_count': len(bus_stops)
         })
     except Exception as e:
         import traceback

@@ -981,9 +981,127 @@ class ServicePlanner:
         
         for c in self.clusters:
             if c.route:
-                c.route.match_employees_to_route(c.employees, self.safe_stops)
+                c.route.find_all_stops_along_route(self.safe_stops, buffer_meters=150)
+                stop_buffer = getattr(self.config, 'ROUTE_STOP_BUFFER_METERS', 150)
+                c.route.match_employees_to_route(c.employees, self.safe_stops, buffer_meters=stop_buffer)
+        
+        total_bus_stops = sum(len(c.route.bus_stops) for c in self.clusters if c.route)
+        print(f"    Bus stops found along routes: {total_bus_stops}")
         
         return routes
+    
+    def reassign_employees_to_closer_routes(self) -> dict:
+        """
+        Reassign employees to stops on other clusters' routes if closer.
+        
+        For employees whose walking distance exceeds MAX_WALK_DISTANCE,
+        check if there's a closer stop on another cluster's route and
+        reassign them to that cluster.
+        
+        Returns dict with reassignment statistics.
+        """
+        max_walk = getattr(self.config, 'MAX_WALK_DISTANCE', 500)  # meters
+        print(f"[4b] Cross-cluster reassignment (max walk: {max_walk}m)...")
+        
+        # Collect all stops from all routes with their cluster IDs
+        all_route_stops = []  # [(lat, lon, cluster_id, cluster), ...]
+        for cluster in self.clusters:
+            if not cluster.route or not cluster.route.stops:
+                continue
+            for stop in cluster.route.stops:
+                all_route_stops.append((stop[0], stop[1], cluster.id, cluster))
+        
+        if not all_route_stops:
+            print("    No route stops available for reassignment")
+            return {'reassigned': 0, 'checked': 0}
+        
+        # Find employees with excessive walking distance
+        reassigned_count = 0
+        checked_count = 0
+        reassignments = []  # Track for logging
+        
+        for cluster in self.clusters:
+            employees_to_remove = []
+            
+            for employee in cluster.get_active_employees():
+                # Skip if no pickup point assigned
+                if not employee.pickup_point:
+                    continue
+                
+                current_walk_distance = employee.walking_distance
+                if current_walk_distance is None:
+                    # Calculate if not set
+                    current_walk_distance = employee.distance_to(
+                        employee.pickup_point[0], employee.pickup_point[1]
+                    )
+                
+                # Only check employees with excessive walking distance
+                if current_walk_distance <= max_walk:
+                    continue
+                
+                checked_count += 1
+                
+                # Find the closest stop from any route (including other clusters)
+                best_stop = None
+                best_distance = current_walk_distance
+                best_cluster = None
+                
+                for stop_lat, stop_lon, stop_cluster_id, stop_cluster in all_route_stops:
+                    # Calculate walking distance to this stop
+                    dist = employee.distance_to(stop_lat, stop_lon)
+                    
+                    if dist < best_distance:
+                        best_distance = dist
+                        best_stop = (stop_lat, stop_lon)
+                        best_cluster = stop_cluster
+                
+                # Reassign if a better stop was found on a different cluster
+                if best_stop and best_cluster and best_cluster.id != cluster.id:
+                    # Check if new distance is acceptable
+                    if best_distance <= max_walk or best_distance < current_walk_distance * 0.7:
+                        # Mark for removal from current cluster
+                        employees_to_remove.append((employee, best_cluster, best_stop, best_distance))
+                        reassignments.append({
+                            'employee_id': employee.id,
+                            'from_cluster': cluster.id,
+                            'to_cluster': best_cluster.id,
+                            'old_distance': current_walk_distance,
+                            'new_distance': best_distance
+                        })
+            
+            # Perform reassignments
+            for employee, new_cluster, new_stop, new_distance in employees_to_remove:
+                # Remove from old cluster
+                cluster.employees.remove(employee)
+                
+                # Add to new cluster
+                new_cluster.add_employee(employee)
+                
+                # Update pickup point
+                employee.set_pickup_point(
+                    new_stop[0], new_stop[1], 
+                    type="stop", 
+                    walking_distance=new_distance
+                )
+                
+                reassigned_count += 1
+        
+        # Log results
+        if reassigned_count > 0:
+            print(f"    ✓ Reassigned {reassigned_count} employees to closer routes")
+            for r in reassignments[:5]:  # Show first 5
+                print(f"      Employee {r['employee_id']}: Cluster {r['from_cluster']} → {r['to_cluster']} "
+                      f"({r['old_distance']:.0f}m → {r['new_distance']:.0f}m)")
+            if len(reassignments) > 5:
+                print(f"      ... and {len(reassignments) - 5} more")
+        else:
+            print(f"    ✓ No employees needed reassignment ({checked_count} checked)")
+        
+        return {
+            'reassigned': reassigned_count,
+            'checked': checked_count,
+            'details': reassignments
+        }
     
     def assign_vehicles(self) -> list[Vehicle]:
         cap = getattr(self.config, 'VEHICLE_CAPACITY', 50)
@@ -1072,7 +1190,6 @@ class ServicePlanner:
                     route_modifications,
                     route_stops,
                     vehicle_assignments,
-                    schedules,
                     routes,
                     vehicles,
                     clusters,
@@ -1246,9 +1363,17 @@ class ServicePlanner:
         self.vehicle_repo.delete_all()
         print("[DB] Database cleared")
     
-    def run(self) -> None:
+    def run(self, optimization_mode: str | None = None) -> None:
+        # Apply optimization mode preset before running
+        if hasattr(self.config, 'apply_optimization_mode'):
+            self.config.apply_optimization_mode(optimization_mode)
+        
+        mode_label = getattr(self.config, 'OPTIMIZATION_MODE', 'balanced').upper()
         print("\n" + "="*50 + "\n        SERVICE ROUTE OPTIMIZATION\n" + "="*50)
         print(f"   Config: {self.config.NUM_EMPLOYEES} employees, {self.config.NUM_CLUSTERS} clusters")
+        print(f"   Mode: {mode_label}  (walk ≤{self.config.MAX_WALK_DISTANCE}m, "
+              f"cluster ≤{self.config.EMPLOYEES_PER_CLUSTER} emp, "
+              f"vehicle ≤{self.config.VEHICLE_CAPACITY})")
         if self.use_database:
             print("   Database: ENABLED")
         print("="*50 + "\n")
@@ -1262,6 +1387,7 @@ class ServicePlanner:
         self.create_clusters()
         self.generate_stops()
         self.optimize_routes(use_stops=True)
+        self.reassign_employees_to_closer_routes()  # Cross-cluster optimization
         self.assign_vehicles()
         # self.generate_maps()  # Disabled - maps now shown in web UI
         self.print_summary()

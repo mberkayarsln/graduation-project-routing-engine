@@ -14,6 +14,37 @@ class Config:
     """Central configuration for the route optimization system."""
     
     # =========================================================================
+    # Optimization Mode
+    # =========================================================================
+    # "balanced" (default), "budget" (fewer vehicles), "employee" (more vehicles)
+    OPTIMIZATION_MODE: str = os.getenv("OPTIMIZATION_MODE", "balanced")
+    
+    # Mode presets override the parameters below when applied.
+    # budget   → larger clusters, longer walks, fewer vehicles
+    # employee → smaller clusters, shorter walks, more vehicles
+    # balanced → default values below
+    OPTIMIZATION_PRESETS: dict = {
+        "budget": {
+            "EMPLOYEES_PER_CLUSTER": 25,
+            "VEHICLE_CAPACITY": 25,
+            "MAX_WALK_DISTANCE": 1500,     # meters
+            "MIN_EMPLOYEES_FOR_SHUTTLE": 5,
+        },
+        "balanced": {
+            "EMPLOYEES_PER_CLUSTER": 17,
+            "VEHICLE_CAPACITY": 17,
+            "MAX_WALK_DISTANCE": 1000,
+            "MIN_EMPLOYEES_FOR_SHUTTLE": 1,
+        },
+        "employee": {
+            "EMPLOYEES_PER_CLUSTER": 10,
+            "VEHICLE_CAPACITY": 10,
+            "MAX_WALK_DISTANCE": 500,
+            "MIN_EMPLOYEES_FOR_SHUTTLE": 1,
+        },
+    }
+    
+    # =========================================================================
     # Office Location
     # =========================================================================
     OFFICE_LOCATION: tuple[float, float] = (40.837384, 29.412109)
@@ -31,14 +62,26 @@ class Config:
     EMPLOYEES_PER_STOP: int = 2
     MIN_STOPS_PER_CLUSTER: int = 1
     MAX_STOPS_PER_CLUSTER: int = 15
-    MIN_EMPLOYEES_FOR_SHUTTLE: int = 10  # Minimum employees to get shuttle service
+    MIN_EMPLOYEES_FOR_SHUTTLE: int = 1  # Minimum employees to get shuttle service
     
     # =========================================================================
     # Walking & Road Snapping
     # =========================================================================
-    MAX_WALK_DISTANCE: int = 500  # Maximum walking distance in meters
+    MAX_WALK_DISTANCE: int = 1000  # Maximum walking distance in meters
+    ROUTE_STOP_BUFFER_METERS: int = 15  # Max distance from route to consider a stop
     SNAP_STOPS_TO_ROADS: bool = True
     ROAD_SNAP_MAX_DISTANCE: int = 500  # Maximum snap distance in meters
+    
+    @classmethod
+    def apply_optimization_mode(cls, mode: str | None = None) -> None:
+        """Apply an optimization mode preset, overriding relevant parameters."""
+        mode = (mode or cls.OPTIMIZATION_MODE).lower()
+        preset = cls.OPTIMIZATION_PRESETS.get(mode)
+        if not preset:
+            return
+        cls.OPTIMIZATION_MODE = mode
+        for key, value in preset.items():
+            setattr(cls, key, value)
     
     # =========================================================================
     # Zone Partitioning

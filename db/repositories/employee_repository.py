@@ -77,6 +77,15 @@ class EmployeeRepository(BaseRepository[Employee]):
         """
         rows = self.db.fetchall(query, (cluster_id,))
         return [self.to_model(row) for row in rows]
+
+    def count_by_cluster(self, cluster_id: int) -> int:
+        """Count employees in a cluster without loading records."""
+        query = """
+            SELECT COUNT(*)
+            FROM employees
+            WHERE cluster_id = %s AND deleted_at IS NULL
+        """
+        return self.db.fetchval(query, (cluster_id,)) or 0
     
     def find_by_zone(self, zone_id: int) -> list[Employee]:
         """Find all employees in a zone."""

@@ -218,6 +218,7 @@
     let routeMap = null;
     let routes = [];
     let currentLayer = null;
+    let backgroundPolylines = [];
     let currentRouteIndex = -1;
     let routingControl = null;
     let lastCalculatedRoute = null;
@@ -286,6 +287,10 @@
                         <span class="info-value">${r.stop_count}</span>
                     </div>
                     <div class="info-item">
+                        <span class="info-label">Bus Stops</span>
+                        <span class="info-value">${r.bus_stop_count || 0}</span>
+                    </div>
+                    <div class="info-item">
                         <span class="info-label">Employees</span>
                         <span class="info-value">${r.employee_count}</span>
                     </div>
@@ -304,12 +309,30 @@
     }
 
     function renderAllRoutesOnMap() {
+        // Clear existing background polylines
+        backgroundPolylines.forEach(p => routeMap.removeLayer(p));
+        backgroundPolylines = [];
+
         routes.forEach((route, i) => {
             const color = colors[i % colors.length];
             const pathCoords = route.coordinates && route.coordinates.length > 1 ? route.coordinates : route.stops;
             if (pathCoords && pathCoords.length > 1) {
                 const latlngs = pathCoords.map(s => [s[0], s[1]]);
-                L.polyline(latlngs, { color: color, weight: 2, opacity: 0.5 }).addTo(routeMap);
+                const polyline = L.polyline(latlngs, { color: color, weight: 3, opacity: 0.6 }).addTo(routeMap);
+                backgroundPolylines.push(polyline);
+                
+                // Add click handler to open route details
+                polyline.on('click', () => showRouteDetails(i));
+                
+                // Highlight on hover
+                polyline.on('mouseover', function() {
+                    this.setStyle({ weight: 6, opacity: 1 });
+                });
+                polyline.on('mouseout', function() {
+                    if (currentRouteIndex !== i) {
+                        this.setStyle({ weight: 3, opacity: 0.6 });
+                    }
+                });
             }
         });
     }
@@ -323,6 +346,14 @@
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
         document.querySelector(`.route-item[data-index="${index}"]`)?.classList.add('selected');
         document.getElementById('map-title').textContent = `Route ${index + 1}`;
+
+        // Reset all background polylines first
+        backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
+        
+        // Bold the background polyline for this route
+        if (backgroundPolylines[index]) {
+            backgroundPolylines[index].setStyle({ weight: 6, opacity: 1 });
+        }
 
         // Clear previous
         if (currentLayer) routeMap.removeLayer(currentLayer);
@@ -351,6 +382,37 @@
                 L.marker([stop[0], stop[1]], { icon }).addTo(currentLayer).bindPopup(`Stop ${i + 1}`);
             });
 
+            // Show ALL bus stops along the route
+            if (route.bus_stops && route.bus_stops.length > 0) {
+                // Fetch stop names
+                const stopMarkers = [];
+                route.bus_stops.forEach((stop, i) => {
+                    const busIcon = L.divIcon({
+                        className: 'bus-stop',
+                        html: '<div style="background:#f59e0b;width:8px;height:8px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(245,158,11,0.6);"></div>',
+                        iconSize: [8, 8],
+                        iconAnchor: [4, 4]
+                    });
+                    const marker = L.marker([stop[0], stop[1]], { icon: busIcon })
+                        .addTo(currentLayer)
+                        .bindPopup(`Bus Stop ${i + 1}`);
+                    stopMarkers.push({ marker, stop });
+                });
+                
+                // Resolve stop names asynchronously
+                fetch('/api/stops/names', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coordinates: route.bus_stops })
+                }).then(r => r.json()).then(names => {
+                    stopMarkers.forEach(({ marker, stop }, i) => {
+                        const key = `${stop[0].toFixed(5)},${stop[1].toFixed(5)}`;
+                        const name = names[key] || 'Bus Stop';
+                        marker.setPopupContent(`<b>${name}</b><br>Stop ${i + 1} of ${stopMarkers.length}`);
+                    });
+                }).catch(() => {});
+            }
+
             routeMap.fitBounds(latlngs);
         }
 
@@ -367,6 +429,12 @@
 
         // Hide all details first
         document.querySelectorAll('.details-content').forEach(el => el.style.display = 'none');
+
+        // Scroll to the route item in sidebar
+        const routeItem = document.querySelector(`.route-item[data-index="${index}"]`);
+        if (routeItem) {
+            routeItem.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
 
         if (!isVisible) {
             detailsEl.style.display = 'block';
@@ -438,9 +506,9 @@
                         cluster.employees.forEach(emp => {
                             const empIcon = L.divIcon({
                                 className: 'employee-marker',
-                                html: '<div style="background:#f64e60;width:6px;height:6px;border-radius:50%;border:1px solid #fff;"></div>',
-                                iconSize: [6, 6],
-                                iconAnchor: [3, 3]
+                                html: '<div style="background:#f64e60;width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 4px rgba(246,78,96,0.6);"></div>',
+                                iconSize: [10, 10],
+                                iconAnchor: [5, 5]
                             });
                             
                             // Show distance to pickup point (from OSRM)
@@ -451,7 +519,7 @@
                                 popupContent += `<br><br><i>Distance not available</i>`;
                             }
                             
-                            L.marker([emp.lat, emp.lon], { icon: empIcon })
+                            L.marker([emp.lat, emp.lon], { icon: empIcon, zIndexOffset: 1000 })
                                 .addTo(currentLayer)
                                 .bindPopup(popupContent);
 
@@ -461,9 +529,9 @@
                                     [[emp.lat, emp.lon], [emp.pickup_point[0], emp.pickup_point[1]]],
                                     {
                                         color: '#f64e60',
-                                        weight: 1,
-                                        opacity: 0.5,
-                                        dashArray: '3, 5'
+                                        weight: 2,
+                                        opacity: 0.7,
+                                        dashArray: '4, 6'
                                     }
                                 ).addTo(currentLayer);
                             }
@@ -484,7 +552,24 @@
         if (isEditMode) {
             disableEditMode();
         }
+        
+        // Remove selection styling
+        document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
+        document.getElementById('map-title').textContent = 'All Routes';
+        
+        // Clear focused route layer and show all routes
+        if (currentLayer) {
+            routeMap.removeLayer(currentLayer);
+            currentLayer = null;
+        }
+        
+        // Reset all background polylines to default style
+        backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
+        
+        currentRouteIndex = -1;
     }
+
+    let editGhostLayer = null;
 
     function enableEditMode(index) {
         selectRoute(index);
@@ -492,9 +577,22 @@
         const route = routes[index];
         const color = colors[index % colors.length];
 
-        // Clear current layer
-        if (currentLayer) routeMap.removeLayer(currentLayer);
-        currentLayer = null;
+        // Keep old route as a faint ghost instead of removing it
+        if (currentLayer) {
+            editGhostLayer = currentLayer;
+            editGhostLayer.eachLayer(layer => {
+                if (layer.setStyle) layer.setStyle({ opacity: 0.15, fillOpacity: 0.1, weight: 3 });
+                if (layer.getElement) {
+                    const el = layer.getElement();
+                    if (el) el.style.opacity = '0.15';
+                }
+            });
+            currentLayer = null;
+        }
+        // Also fade the background polyline for this route
+        if (backgroundPolylines[index]) {
+            backgroundPolylines[index].setStyle({ opacity: 0.1, weight: 2 });
+        }
 
         // Setup waypoints
         const waypoints = route.stops.map(s => L.latLng(s[0], s[1]));
@@ -550,6 +648,10 @@
         if (routingControl) {
             routeMap.removeControl(routingControl);
             routingControl = null;
+        }
+        if (editGhostLayer) {
+            routeMap.removeLayer(editGhostLayer);
+            editGhostLayer = null;
         }
         isEditMode = false;
 
@@ -616,19 +718,24 @@
             if (res.ok) {
                 const result = await res.json();
                 const reassignedCount = result.employees_reassigned || 0;
-                showToast(`Route saved! ${reassignedCount} employee(s) reassigned to new stops.`, 'success');
+                const busStopCount = result.bus_stop_count || 0;
+                showToast(`Route saved! ${reassignedCount} employee(s) reassigned, ${busStopCount} bus stops found.`, 'success');
 
                 // Update local data
                 routes[index].stops = waypoints;
                 routes[index].coordinates = coordinates;
                 routes[index].distance_km = distance_km;
                 routes[index].duration_min = duration_min;
+                routes[index].stop_count = waypoints.length;
                 routes[index].optimized = false;
+                routes[index].bus_stops = result.bus_stops || [];
+                routes[index].bus_stop_count = (result.bus_stops || []).length;
 
                 originalWaypoints = waypoints.map(s => L.latLng(s[0], s[1]));
 
                 // Update UI
                 renderRouteList();
+                renderAllRoutesOnMap();
                 cancelEdit(index);
             } else {
                 showToast('Error saving route', 'error');

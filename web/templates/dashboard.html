@@ -4,8 +4,15 @@
 {% block page_title %}Dashboard{% endblock %}
 
 {% block header_actions %}
-<button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Generate Routes</button>
-<button class="btn btn-primary" onclick="refreshStats()">Refresh</button>
+<div style="display:flex;align-items:center;gap:10px;">
+    <select id="optimization-mode" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);font-size:13px;font-weight:500;cursor:pointer;">
+        <option value="budget">Budget-Friendly (fewer vehicles)</option>
+        <option value="balanced" selected>Balanced</option>
+        <option value="employee">Employee-Friendly (shorter walks)</option>
+    </select>
+    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Generate Routes</button>
+    <button class="btn btn-primary" onclick="refreshStats()">Refresh</button>
+</div>
 {% endblock %}
 
 {% block content %}
@@ -132,15 +139,34 @@
         }
     }
 
+    // Load current optimization mode on init
+    async function loadOptimizationMode() {
+        try {
+            const res = await fetch('/api/optimization-mode');
+            const data = await res.json();
+            const sel = document.getElementById('optimization-mode');
+            if (sel && data.current_mode) {
+                sel.value = data.current_mode;
+            }
+        } catch (err) {
+            console.error('Error loading optimization mode:', err);
+        }
+    }
+
     async function generateRoutes() {
         const btn = document.getElementById('generate-btn');
         const originalText = btn.textContent;
+        const mode = document.getElementById('optimization-mode').value;
 
         try {
             btn.textContent = 'Generating...';
             btn.disabled = true;
 
-            const res = await fetch('/api/generate-routes', { method: 'POST' });
+            const res = await fetch('/api/generate-routes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ mode: mode })
+            });
             const data = await res.json();
 
             if (data.success) {
@@ -161,6 +187,7 @@
     }
 
     // Initialize
+    loadOptimizationMode();
     refreshStats();
     loadRoutes();
 </script>

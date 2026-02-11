@@ -158,6 +158,7 @@ class Route:
     def __init__(self, cluster: Cluster | None = None) -> None:
         self.cluster = cluster
         self.stops: list[tuple[float, float]] = []
+        self.bus_stops: list[tuple[float, float]] = []  # All bus stops along the route
         self.coordinates: list[list[float]] = []
         self.distance_km: float = 0.0
         self.duration_min: float = 0.0
@@ -219,10 +220,50 @@ class Route:
     def to_dict(self) -> dict:
         return {
             'coordinates': self.coordinates or self.stops, 'stops': self.stops,
+            'bus_stops': self.bus_stops,
             'distance_km': self.distance_km, 'duration_min': self.duration_min
         }
     
-    def match_employees_to_route(self, employees: list[Employee], safe_stops: list | None = None) -> int:
+    def find_all_stops_along_route(self, all_stops: list, buffer_meters: float = 150) -> list[tuple[float, float]]:
+        """Find ALL bus stops within buffer_meters of the route path.
+        
+        Args:
+            all_stops: List of (lat, lon) tuples of all known bus stops.
+            buffer_meters: Search buffer in meters (default 150m).
+        
+        Returns:
+            List of (lat, lon) tuples of bus stops along the route, ordered by position on route.
+        """
+        if not self.coordinates or len(self.coordinates) < 2:
+            return []
+        
+        try:
+            line = LineString(self.coordinates)
+            # Convert buffer from meters to approximate degrees
+            # ~1 degree lat ≈ 111,000m; at Istanbul's latitude ~1 degree lon ≈ 85,000m
+            buffer_deg = buffer_meters / 111_000  # conservative estimate
+            
+            found_stops = []
+            for s in all_stops:
+                s_point = Point(s[0], s[1])
+                if line.distance(s_point) < buffer_deg:
+                    # Store with position along route for ordering
+                    pos = line.project(s_point)
+                    found_stops.append((pos, s))
+            
+            # Sort by position along the route
+            found_stops.sort(key=lambda x: x[0])
+            self.bus_stops = [s for _, s in found_stops]
+            return self.bus_stops
+        except Exception:
+            return []
+
+    def match_employees_to_route(
+        self,
+        employees: list[Employee],
+        safe_stops: list | None = None,
+        buffer_meters: float = 150,
+    ) -> int:
         """Match employees to pickup points along the route."""
         if not self.coordinates or len(self.coordinates) < 2:
             return 0
@@ -233,11 +274,12 @@ class Route:
             
             valid_route_stops = [s for s in self.stops] if self.stops else []
             
-            # Add safe stops near the route (within ~30m of route)
+            # Add safe stops near the route (within buffer_meters of route)
+            buffer_deg = buffer_meters / 111_000  # meters -> degrees (approx)
             if safe_stops and len(safe_stops) > 0:
                 for s in safe_stops:
                     s_point = Point(s[0], s[1])
-                    if line.distance(s_point) < 0.0003:  # ~30 meters
+                    if line.distance(s_point) < buffer_deg:
                         valid_route_stops.append(s)
             
             # Filter stops to only those on the right side of the route
