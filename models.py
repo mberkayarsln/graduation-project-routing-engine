@@ -224,12 +224,18 @@ class Route:
             'distance_km': self.distance_km, 'duration_min': self.duration_min
         }
     
-    def find_all_stops_along_route(self, all_stops: list, buffer_meters: float = 150) -> list[tuple[float, float]]:
+    def find_all_stops_along_route(
+        self,
+        all_stops: list,
+        buffer_meters: float = 150,
+        same_side_only: bool = True
+    ) -> list[tuple[float, float]]:
         """Find ALL bus stops within buffer_meters of the route path.
         
         Args:
             all_stops: List of (lat, lon) tuples of all known bus stops.
             buffer_meters: Search buffer in meters (default 150m).
+            same_side_only: If True, only include stops on the right side of the route.
         
         Returns:
             List of (lat, lon) tuples of bus stops along the route, ordered by position on route.
@@ -249,6 +255,24 @@ class Route:
                 if line.distance(s_point) < buffer_deg:
                     # Store with position along route for ordering
                     pos = line.project(s_point)
+                    
+                    # Filter by side if requested
+                    if same_side_only:
+                        delta = 1e-5
+                        p1 = line.interpolate(max(0, pos - delta))
+                        p2 = line.interpolate(min(line.length, pos + delta))
+                        
+                        vx = p2.x - p1.x
+                        vy = p2.y - p1.y
+                        wx = s_point.x - p1.x
+                        wy = s_point.y - p1.y
+                        
+                        cross_product = vx * wy - vy * wx
+                        
+                        # Only include if on the right side (cross product >= 0)
+                        if cross_product < -1e-10:
+                            continue
+                    
                     found_stops.append((pos, s))
             
             # Sort by position along the route

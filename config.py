@@ -68,7 +68,9 @@ class Config:
     # Walking & Road Snapping
     # =========================================================================
     MAX_WALK_DISTANCE: int = 1000  # Maximum walking distance in meters
-    ROUTE_STOP_BUFFER_METERS: int = 15  # Max distance from route to consider a stop
+    ROUTE_STOP_BUFFER_METERS: int = 15  # Max distance from route to consider a stop for assignment
+    BUS_STOP_DISCOVERY_BUFFER_METERS: int = 30  # Max distance to discover/show stops along route
+    FILTER_STOPS_BY_ROUTE_SIDE: bool = True  # Only show stops on the same side as route direction
     SNAP_STOPS_TO_ROADS: bool = True
     ROAD_SNAP_MAX_DISTANCE: int = 500  # Maximum snap distance in meters
     
@@ -126,7 +128,7 @@ class Config:
     
     # Load employees from database instead of generating new ones
     # Set to False to generate new random employees each run
-    LOAD_EMPLOYEES_FROM_DB: bool = False
+    LOAD_EMPLOYEES_FROM_DB: bool = True
     
     # Clear all existing data before saving new data (for development/testing)
     TRUNCATE_DATABASE_ON_SAVE: bool = True

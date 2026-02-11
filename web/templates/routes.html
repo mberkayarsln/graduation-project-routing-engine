@@ -439,8 +439,65 @@
         if (!isVisible) {
             detailsEl.style.display = 'block';
 
-            // Load employees
+            // Fetch route with bus stops if not already loaded
             const route = routes[index];
+            if (!route.bus_stops || route.bus_stops.length === 0) {
+                try {
+                    const routeRes = await fetch(`/api/routes/${route.cluster_id}`);
+                    const routeData = await routeRes.json();
+                    if (!routeData.error && routeData.bus_stops) {
+                        // Update the route in the routes array with bus stops
+                        routes[index].bus_stops = routeData.bus_stops;
+                        routes[index].bus_stop_count = routeData.bus_stop_count;
+                    }
+                } catch (err) {
+                    console.error('Error loading route details:', err);
+                }
+            }
+
+            // Add bus stop markers to map if we have them
+            if (currentLayer && route.bus_stops && route.bus_stops.length > 0) {
+                // Fetch real names for all bus stops
+                fetch('/api/stops/names', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ coordinates: route.bus_stops })
+                })
+                    .then(res => res.json())
+                    .then(names => {
+                        route.bus_stops.forEach((stop, idx) => {
+                            const key = `${stop[0].toFixed(5)},${stop[1].toFixed(5)}`;
+                            const name = names[key] || `Bus Stop ${idx + 1}`;
+                            
+                            const busIcon = L.divIcon({
+                                className: 'bus-stop-icon',
+                                html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
+                                iconSize: [12, 12],
+                                iconAnchor: [6, 6]
+                            });
+                            L.marker([stop[0], stop[1]], { icon: busIcon })
+                                .addTo(currentLayer)
+                                .bindPopup(`<b>${name}</b><br>Lat: ${stop[0].toFixed(5)}<br>Lon: ${stop[1].toFixed(5)}`);
+                        });
+                    })
+                    .catch(err => {
+                        console.error('Error fetching stop names:', err);
+                        // Fallback: show without names
+                        route.bus_stops.forEach((stop, idx) => {
+                            const busIcon = L.divIcon({
+                                className: 'bus-stop-icon',
+                                html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
+                                iconSize: [12, 12],
+                                iconAnchor: [6, 6]
+                            });
+                            L.marker([stop[0], stop[1]], { icon: busIcon })
+                                .addTo(currentLayer)
+                                .bindPopup(`<b>Bus Stop ${idx + 1}</b><br>Lat: ${stop[0].toFixed(5)}<br>Lon: ${stop[1].toFixed(5)}`);
+                        });
+                    });
+            }
+
+            // Load employees
             try {
                 const res = await fetch(`/api/clusters/${route.cluster_id}`);
                 const cluster = await res.json();
@@ -487,9 +544,9 @@
                                         if (stopName && stopName !== 'Bus Stop') {
                                             const stopIcon = L.divIcon({
                                                 className: 'bus-stop-marker',
-                                                html: '<div style="background:#ffa800;width:14px;height:14px;border-radius:3px;border:2px solid #fff;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:bold;color:#fff;">B</div>',
-                                                iconSize: [14, 14],
-                                                iconAnchor: [7, 7]
+                                                html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
+                                                iconSize: [12, 12],
+                                                iconAnchor: [6, 6]
                                             });
                                             L.marker([stop.lat, stop.lon], { icon: stopIcon })
                                                 .addTo(currentLayer)

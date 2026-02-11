@@ -981,8 +981,10 @@ class ServicePlanner:
         
         for c in self.clusters:
             if c.route:
-                c.route.find_all_stops_along_route(self.safe_stops, buffer_meters=150)
-                stop_buffer = getattr(self.config, 'ROUTE_STOP_BUFFER_METERS', 150)
+                discovery_buffer = getattr(self.config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+                same_side = getattr(self.config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+                c.route.find_all_stops_along_route(self.safe_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+                stop_buffer = getattr(self.config, 'ROUTE_STOP_BUFFER_METERS', 15)
                 c.route.match_employees_to_route(c.employees, self.safe_stops, buffer_meters=stop_buffer)
         
         total_bus_stops = sum(len(c.route.bus_stops) for c in self.clusters if c.route)

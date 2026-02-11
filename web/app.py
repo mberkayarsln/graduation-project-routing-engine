@@ -371,7 +371,10 @@ def api_routes():
                 # Find all bus stops along this route only if requested
                 bus_stops = []
                 if include_bus_stops:
-                    bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=150)
+                    from config import Config
+                    discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+                    same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+                    bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
                 employee_count = employee_repo.count_by_cluster(c.id)
                 
                 routes.append({
@@ -388,6 +391,43 @@ def api_routes():
                     'optimized': route.optimized
                 })
         return jsonify(routes)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/routes/<int:cluster_id>', methods=['GET'])
+def api_get_route(cluster_id):
+    """Get a single route with full details including bus stops."""
+    try:
+        cluster = cluster_repo.find_by_id(cluster_id, include_employees=False)
+        if not cluster:
+            return jsonify({'error': 'Cluster not found'}), 404
+        
+        route = route_repo.find_by_cluster(cluster_id)
+        if not route:
+            return jsonify({'error': 'Route not found'}), 404
+        
+        # Always include bus stops for detail view
+        from config import Config
+        all_transit_stops = _get_transit_stops_cached()
+        discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+        same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+        bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+        employee_count = employee_repo.count_by_cluster(cluster_id)
+        
+        return jsonify({
+            'cluster_id': cluster.id,
+            'center': cluster.center,
+            'distance_km': route.distance_km,
+            'duration_min': route.duration_min,
+            'stops': route.stops,
+            'bus_stops': bus_stops,
+            'coordinates': route.coordinates,
+            'stop_count': len(route.stops),
+            'bus_stop_count': len(bus_stops),
+            'employee_count': employee_count,
+            'optimized': route.optimized
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -431,7 +471,9 @@ def api_update_route(cluster_id):
             from config import Config
             
             # Find all bus stops along the new route
-            bus_stops = route.find_all_stops_along_route(safe_stops, buffer_meters=150)
+            discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+            same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+            bus_stops = route.find_all_stops_along_route(safe_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
             
             stop_buffer = getattr(Config, 'ROUTE_STOP_BUFFER_METERS', 150)
             matched_count = route.match_employees_to_route(
@@ -503,20 +545,20 @@ def api_update_vehicle(id):
 # REST API - Bus Stop Names
 # =============================================================================
 
-# Cache for transit stop names
-_transit_stops_cache = None
+# Cache for transit stop names (separate from coordinates cache)
+_transit_stop_names_cache: dict[tuple[float, float], str] | None = None
 
 @app.route('/api/stops/names', methods=['POST'])
 def api_stop_names():
     """Look up bus stop names by coordinates."""
-    global _transit_stops_cache
+    global _transit_stop_names_cache
     
     try:
         # Load transit stops with names (cached)
-        if _transit_stops_cache is None:
+        if _transit_stop_names_cache is None:
             from utils import DataGenerator
             data_gen = DataGenerator()
-            _transit_stops_cache = data_gen.get_transit_stops_with_names()
+            _transit_stop_names_cache = data_gen.get_transit_stops_with_names()
         
         data = request.json
         coordinates = data.get('coordinates', [])  # List of [lat, lon] pairs
@@ -527,7 +569,7 @@ def api_stop_names():
             # Find nearest stop within ~50m (0.0005 degrees)
             best_name = None
             best_dist = float('inf')
-            for (stop_lat, stop_lon), name in _transit_stops_cache.items():
+            for (stop_lat, stop_lon), name in _transit_stop_names_cache.items():
                 dist = abs(stop_lat - lat) + abs(stop_lon - lon)
                 if dist < 0.0005 and dist < best_dist:
                     best_dist = dist

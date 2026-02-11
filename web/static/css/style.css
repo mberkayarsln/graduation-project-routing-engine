@@ -749,4 +749,5 @@ select:focus {
     font-size:13px;
     font-weight:500;
     cursor:pointer;
+    max-width: 200px;
 }
