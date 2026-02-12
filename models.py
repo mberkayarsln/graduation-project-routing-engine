@@ -6,13 +6,9 @@ Contains: Employee, Cluster, Route, Vehicle
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING
 
 from shapely.geometry import Point, LineString, MultiPoint
 from shapely.ops import nearest_points
-
-if TYPE_CHECKING:
-    pass
 
 
 from utils import haversine
@@ -44,19 +40,8 @@ class Employee:
     def distance_to(self, other_lat: float, other_lon: float) -> float:
         return haversine(self.lat, self.lon, other_lat, other_lon)
     
-    def exclude(self, reason: str) -> None:
-        self.excluded = True
-        self.exclusion_reason = reason
-    
     def get_location(self) -> tuple[float, float]:
         return (self.lat, self.lon)
-    
-    def to_dict(self) -> dict:
-        return {
-            'id': self.id, 'lat': self.lat, 'lon': self.lon, 'name': self.name,
-            'cluster_id': self.cluster_id, 'zone_id': self.zone_id,
-            'excluded': self.excluded, 'exclusion_reason': self.exclusion_reason
-        }
     
     def __repr__(self) -> str:
         status = "excluded" if self.excluded else f"cluster {self.cluster_id}"
@@ -87,15 +72,6 @@ class Cluster:
         self.employees.append(employee)
         employee.cluster_id = self.id
     
-    def filter_by_distance(self, max_distance: float) -> int:
-        excluded_count = 0
-        center_lat, center_lon = self.center
-        for employee in self.employees:
-            if employee.distance_to(center_lat, center_lon) > max_distance:
-                employee.exclude(f"Too far from center")
-                excluded_count += 1
-        return excluded_count
-    
     def get_active_employees(self) -> list[Employee]:
         return [emp for emp in self.employees if not emp.excluded]
     
@@ -122,27 +98,8 @@ class Cluster:
             if i < len(assignments):
                 self.stop_assignments[employee.id] = assignments[i]
     
-    def get_employee_stop(self, employee: Employee) -> tuple[int | None, tuple | None]:
-        if employee.id in self.stop_assignments:
-            idx = self.stop_assignments[employee.id]
-            if idx < len(self.stops):
-                return idx, self.stops[idx]
-        return None, None
-    
     def has_stops(self) -> bool:
         return len(self.stops) > 0
-    
-    def get_stats(self) -> dict:
-        active = self.get_employee_count(include_excluded=False)
-        total = self.get_employee_count(include_excluded=True)
-        stats = {
-            'id': self.id, 'center': self.center, 'total_employees': total,
-            'active_employees': active, 'excluded_employees': total - active,
-            'has_route': self.route is not None, 'n_stops': len(self.stops)
-        }
-        if self.route:
-            stats['route_distance_km'] = self.route.distance_km
-        return stats
     
     def __repr__(self) -> str:
         return f"Cluster(id={self.id}, employees={len(self.employees)})"
@@ -170,39 +127,6 @@ class Route:
     def set_stops(self, stops: list) -> None:
         self.stops = stops
     
-    def set_coordinates(self, coordinates: list) -> None:
-        self.coordinates = coordinates
-    
-    def add_stop(self, lat: float, lon: float) -> None:
-        self.stops.append((lat, lon))
-    
-    def set_distance(self, distance_km: float) -> None:
-        self.distance_km = distance_km
-    
-    def set_duration(self, duration_min: float, no_traffic_min: float | None = None) -> None:
-        self.duration_min = duration_min
-        if no_traffic_min:
-            self.duration_no_traffic_min = no_traffic_min
-            self.traffic_delay_min = duration_min - no_traffic_min
-            self.has_traffic_data = True
-    
-    def set_traffic_data(self, traffic_info: dict) -> None:
-        self.coordinates = traffic_info.get('coordinates', [])
-        self.distance_km = traffic_info.get('distance_km', 0)
-        self.duration_min = traffic_info.get('duration_with_traffic_min', 0)
-        self.duration_no_traffic_min = traffic_info.get('duration_no_traffic_min', 0)
-        self.traffic_delay_min = traffic_info.get('traffic_delay_min', 0)
-        self.has_traffic_data = True
-    
-    def mark_optimized(self) -> None:
-        self.optimized = True
-    
-    def get_stop_count(self) -> int:
-        return len(self.stops)
-    
-    def get_avg_speed_kmh(self) -> float:
-        return (self.distance_km / self.duration_min) * 60 if self.duration_min > 0 else 0
-    
     def calculate_stats_from_stops(self) -> None:
         if not self.stops or len(self.stops) < 2:
             self.distance_km = self.duration_min = 0
@@ -210,19 +134,6 @@ class Route:
         total = sum(haversine(*self.stops[i], *self.stops[i+1]) for i in range(len(self.stops)-1))
         self.distance_km = total / 1000
         self.duration_min = (self.distance_km / 40) * 60
-    
-    def get_stats(self) -> dict:
-        return {
-            'stops': len(self.stops), 'distance_km': round(self.distance_km, 2),
-            'duration_min': round(self.duration_min, 1), 'optimized': self.optimized
-        }
-    
-    def to_dict(self) -> dict:
-        return {
-            'coordinates': self.coordinates or self.stops, 'stops': self.stops,
-            'bus_stops': self.bus_stops,
-            'distance_km': self.distance_km, 'duration_min': self.duration_min
-        }
     
     def find_all_stops_along_route(
         self,
@@ -417,27 +328,7 @@ class Vehicle:
     def set_departure_time(self, departure_time: datetime) -> None:
         self.departure_time = departure_time
     
-    def can_accommodate(self, employee_count: int) -> bool:
-        return employee_count <= self.capacity
-    
-    def get_occupancy_rate(self) -> float:
-        if self.cluster:
-            return (self.cluster.get_employee_count() / self.capacity) * 100
-        return 0
-    
-    def is_full(self) -> bool:
-        return self.get_occupancy_rate() >= 100
-    
-    def get_stats(self) -> dict:
-        stats = {
-            'id': self.id, 'type': self.vehicle_type, 'capacity': self.capacity,
-            'occupancy_rate': round(self.get_occupancy_rate(), 1)
-        }
-        if self.cluster:
-            stats['cluster_id'] = self.cluster.id
-        if self.route:
-            stats['route_distance_km'] = self.route.distance_km
-        return stats
+
     
     def __repr__(self) -> str:
         return f"Vehicle(id={self.id}, capacity={self.capacity})"

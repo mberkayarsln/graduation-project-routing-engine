@@ -1,8 +1,6 @@
 """Repository for Route and RouteStop entities."""
 from __future__ import annotations
 
-from datetime import datetime
-
 from db.connection import Database
 from db.repositories.base_repository import BaseRepository
 from models import Route, Cluster
@@ -161,35 +159,7 @@ class RouteRepository(BaseRepository[Route]):
             """
             self.db.execute(query, (route_id, seq, stop_wkt, stop_type))
     
-    def update_optimization_status(self, route_id: int, status: str) -> bool:
-        """Update route optimization status."""
-        valid_statuses = ["pending", "optimizing", "optimized", "failed", "modified"]
-        if status not in valid_statuses:
-            return False
-        
-        query = """
-            UPDATE routes SET optimization_status = %s, updated_at = now()
-            WHERE id = %s AND deleted_at IS NULL
-        """
-        self.db.execute(query, (status, route_id))
-        return True
-    
-    def log_modification(self, route_id: int, modified_by: str, 
-                         modification_type: str, reason: str = None,
-                         previous_state: dict = None, new_state: dict = None) -> int:
-        """Log a route modification for audit trail."""
-        import json
-        query = """
-            INSERT INTO route_modifications 
-                (route_id, modified_by, modification_type, reason, previous_state, new_state)
-            VALUES (%s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """
-        return self.db.fetchval(query, (
-            route_id, modified_by, modification_type, reason,
-            json.dumps(previous_state) if previous_state else None,
-            json.dumps(new_state) if new_state else None
-        ))
+
     
     def delete_all(self) -> int:
         """Soft delete all routes and their stops."""

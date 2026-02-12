@@ -59,9 +59,6 @@ class Config:
     # Cluster & Stop Settings
     # =========================================================================
     EMPLOYEES_PER_CLUSTER: int = 17  # Maximum employees per cluster
-    EMPLOYEES_PER_STOP: int = 2
-    MIN_STOPS_PER_CLUSTER: int = 1
-    MAX_STOPS_PER_CLUSTER: int = 15
     MIN_EMPLOYEES_FOR_SHUTTLE: int = 1  # Minimum employees to get shuttle service
     
     # =========================================================================
@@ -71,8 +68,6 @@ class Config:
     ROUTE_STOP_BUFFER_METERS: int = 15  # Max distance from route to consider a stop for assignment
     BUS_STOP_DISCOVERY_BUFFER_METERS: int = 30  # Max distance to discover/show stops along route
     FILTER_STOPS_BY_ROUTE_SIDE: bool = True  # Only show stops on the same side as route direction
-    SNAP_STOPS_TO_ROADS: bool = True
-    ROAD_SNAP_MAX_DISTANCE: int = 500  # Maximum snap distance in meters
     
     @classmethod
     def apply_optimization_mode(cls, mode: str | None = None) -> None:
@@ -109,10 +104,6 @@ class Config:
     # Output Paths
     # =========================================================================
     OUTPUT_DIR: str = "maps"
-    MAP_EMPLOYEES: str = f"{OUTPUT_DIR}/employees.html"
-    MAP_CLUSTERS: str = f"{OUTPUT_DIR}/clusters.html"
-    MAP_ROUTES: str = f"{OUTPUT_DIR}/optimized_routes.html"
-    MAP_CLUSTER_DETAIL: str = f"{OUTPUT_DIR}/cluster_0_detail.html"
     
     # =========================================================================
     # Database Settings

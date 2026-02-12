@@ -78,24 +78,8 @@ class ClusterRepository(BaseRepository[Cluster]):
             employees = self.employee_repo.find_by_cluster(id)
         return self.to_model(row, employees)
     
-    def find_by_zone(self, zone_id: int, include_employees: bool = False) -> list[Cluster]:
-        """Find all clusters in a zone."""
-        query = """
-            SELECT id, zone_id,
-                   ST_AsText(center_location) as center_location_wkt,
-                   ST_AsText(original_center) as original_center_wkt
-            FROM clusters
-            WHERE zone_id = %s AND deleted_at IS NULL
-            ORDER BY id
-        """
-        rows = self.db.fetchall(query, (zone_id,))
-        clusters = []
-        for row in rows:
-            employees = None
-            if include_employees:
-                employees = self.employee_repo.find_by_cluster(row["id"])
-            clusters.append(self.to_model(row, employees))
-        return clusters
+
+
     
     def save(self, cluster: Cluster) -> int:
         """Insert or update a cluster. Returns the ID."""

@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TypeVar, Generic
+from typing import TypeVar, Generic
 
 from db.connection import Database
 
@@ -57,11 +57,7 @@ class BaseRepository(ABC, Generic[T]):
         self.db.execute(query, (id,))
         return True
     
-    def hard_delete(self, id: int) -> bool:
-        """Permanently delete a record."""
-        query = f"DELETE FROM {self.table_name} WHERE id = %s"
-        self.db.execute(query, (id,))
-        return True
+
     
     def count(self) -> int:
         """Count all active records."""

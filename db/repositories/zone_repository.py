@@ -68,40 +68,9 @@ class ZoneRepository(BaseRepository[Zone]):
             """
             return self.db.fetchval(query, (name,))
     
-    def update(self, id: int, name: str | None = None, boundary_wkt: str | None = None) -> bool:
-        """Update zone by ID."""
-        updates = []
-        params = []
-        
-        if name is not None:
-            updates.append("name = %s")
-            params.append(name)
-        if boundary_wkt is not None:
-            updates.append("boundary = ST_GeomFromText(%s, 4326)")
-            params.append(boundary_wkt)
-        
-        if not updates:
-            return False
-        
-        params.append(id)
-        query = f"""
-            UPDATE zones SET {", ".join(updates)}, updated_at = now()
-            WHERE id = %s AND deleted_at IS NULL
-        """
-        self.db.execute(query, tuple(params))
-        return True
+
     
-    def find_containing_point(self, lat: float, lon: float) -> Zone | None:
-        """Find zone that contains the given point."""
-        query = """
-            SELECT id, name, ST_AsText(boundary) as boundary_wkt
-            FROM zones
-            WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint(%s, %s), 4326))
-            AND deleted_at IS NULL
-            LIMIT 1
-        """
-        row = self.db.fetchone(query, (lon, lat))
-        return self.to_model(row) if row else None
+
     
     def delete_all(self) -> int:
         """Soft delete all zones. Returns count of deleted zones."""

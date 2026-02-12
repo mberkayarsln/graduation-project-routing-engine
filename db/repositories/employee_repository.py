@@ -1,8 +1,6 @@
 """Repository for Employee entity."""
 from __future__ import annotations
 
-from datetime import time
-
 from db.connection import Database
 from db.repositories.base_repository import BaseRepository
 from models import Employee
@@ -86,20 +84,8 @@ class EmployeeRepository(BaseRepository[Employee]):
             WHERE cluster_id = %s AND deleted_at IS NULL
         """
         return self.db.fetchval(query, (cluster_id,)) or 0
-    
-    def find_by_zone(self, zone_id: int) -> list[Employee]:
-        """Find all employees in a zone."""
-        query = """
-            SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
-                   ST_AsText(home_location) as home_location_wkt,
-                   ST_AsText(pickup_point) as pickup_point_wkt
-            FROM employees
-            WHERE zone_id = %s AND deleted_at IS NULL
-            ORDER BY id
-        """
-        rows = self.db.fetchall(query, (zone_id,))
-        return [self.to_model(row) for row in rows]
-    
+
+
     def save(self, employee: Employee) -> int:
         """Insert or update an employee. Returns the ID."""
         home_wkt = self.point_to_wkt(employee.lat, employee.lon)
@@ -176,14 +162,7 @@ class EmployeeRepository(BaseRepository[Employee]):
         self.db.execute(query, (cluster_id, employee_id))
         return True
     
-    def update_zone_assignment(self, employee_id: int, zone_id: int | None) -> bool:
-        """Update employee's zone assignment."""
-        query = """
-            UPDATE employees SET zone_id = %s, updated_at = now()
-            WHERE id = %s AND deleted_at IS NULL
-        """
-        self.db.execute(query, (zone_id, employee_id))
-        return True
+
     
     def clear_all_clusters(self) -> int:
         """Clear all cluster assignments. Returns count of updated employees."""
