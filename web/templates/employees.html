@@ -1,32 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Employees - Routing Engine{% endblock %}
-{% block page_title %}Employees{% endblock %}
+{% block title %}Personeller - Rota Motoru{% endblock %}
+{% block page_title %}Personeller{% endblock %}
 
 {% block header_actions %}
 <div class="search-box">
-    <input type="text" id="employee-search" placeholder="Search employees..." onkeyup="filterEmployees()">
+    <input type="text" id="employee-search" placeholder="Personel ara..." onkeyup="filterEmployees()">
 </div>
 <select id="filter-status" onchange="filterEmployees()">
-    <option value="all">All Status</option>
-    <option value="active">Active Only</option>
-    <option value="excluded">Excluded Only</option>
+    <option value="all">Tüm Durumlar</option>
+    <option value="active">Sadece Aktif</option>
+    <option value="excluded">Sadece Hariç Tutulan</option>
 </select>
 {% endblock %}
 
 {% block content %}
-<!-- Employee Map -->
 <div class="card" id="employee-map-card" style="margin-bottom: 20px;">
     <div class="card-header">
-        <h2>Employee Locations</h2>
+        <h2>Personel Konumları</h2>
         <div style="display:flex;gap:10px;align-items:center;">
             <span id="selection-count" style="color:var(--text-muted);font-size:13px;"></span>
             <button class="btn btn-secondary btn-sm" onclick="clearSelection()" id="clear-selection-btn"
-                style="display:none;">Clear</button>
+                style="display:none;">Temizle</button>
             <button class="btn btn-danger btn-sm" onclick="excludeSelected()" id="exclude-btn"
-                style="display:none;">Exclude Selected</button>
+                style="display:none;">Seçilenleri Hariç Tut</button>
             <button class="btn btn-success btn-sm" onclick="includeSelected()" id="include-btn"
-                style="display:none;">Include Selected</button>
+                style="display:none;">Seçilenleri Dahil Et</button>
         </div>
     </div>
     <div class="card-body">
@@ -39,28 +38,27 @@
         <thead>
             <tr>
                 <th>ID</th>
-                <th>Name</th>
-                <th>Location</th>
-                <th>Zone</th>
-                <th>Cluster</th>
+                <th>Ad Soyad</th>
+                <th>Konum</th>
+                <th>Bölge</th>
+                <th>Küme</th>
 
-                <th>Status</th>
-                <th>Actions</th>
+                <th>Durum</th>
+                <th>İşlemler</th>
             </tr>
         </thead>
         <tbody id="employees-tbody">
             <tr>
-                <td colspan="7" class="loading">Loading employees...</td>
+                <td colspan="7" class="loading">Personeller yükleniyor...</td>
             </tr>
         </tbody>
     </table>
 </div>
 
-<!-- Employee Detail Modal -->
 <div id="employee-modal" class="modal" style="display:none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modal-title">Employee Details</h3>
+            <h3 id="modal-title">Personel Detayları</h3>
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -70,24 +68,24 @@
                 <input type="hidden" id="edit-employee-id">
 
                 <div class="form-group">
-                    <label>Status</label>
+                    <label>Durum</label>
                     <div class="toggle-group">
                         <label class="toggle">
                             <input type="checkbox" id="edit-excluded">
                             <span class="toggle-slider"></span>
-                            <span class="toggle-label">Excluded from Service</span>
+                            <span class="toggle-label">Servisten Hariç Tutuldu</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group" id="exclusion-reason-group" style="display:none;">
-                    <label>Exclusion Reason</label>
-                    <input type="text" id="edit-exclusion-reason" placeholder="Enter reason...">
+                    <label>Hariç Tutma Nedeni</label>
+                    <input type="text" id="edit-exclusion-reason" placeholder="Neden giriniz...">
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">İptal</button>
+                    <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
                 </div>
             </form>
         </div>
@@ -106,7 +104,7 @@
 
     function updateSelectionUI() {
         const count = selectedEmployees.size;
-        document.getElementById('selection-count').textContent = count > 0 ? `${count} selected` : '';
+        document.getElementById('selection-count').textContent = count > 0 ? `${count} seçildi` : '';
         document.getElementById('clear-selection-btn').style.display = count > 0 ? 'inline-flex' : 'none';
         document.getElementById('exclude-btn').style.display = count > 0 ? 'inline-flex' : 'none';
         document.getElementById('include-btn').style.display = count > 0 ? 'inline-flex' : 'none';
@@ -128,11 +126,10 @@
         if (!marker || !emp) return;
 
         const isSelected = selectedEmployees.has(empId);
-        // red=excluded, purple=active without route, green=has route
-        let color = '#10b981'; // default green
+        let color = '#10b981';
         if (isSelected) color = '#3699ff';
         else if (emp.excluded) color = '#f64e60';
-        else if (!emp.has_route) color = '#8b5cf6'; // purple
+        else if (!emp.has_route) color = '#8b5cf6';
         const size = isSelected ? 12 : 8;
         marker.setIcon(L.divIcon({
             className: 'employee-marker',
@@ -147,7 +144,6 @@
         selectedEmployees.clear();
         selected.forEach(id => updateMarkerStyle(id));
         updateSelectionUI();
-        // Close any open popups
         mainMap.closePopup();
     }
 
@@ -156,7 +152,7 @@
             await fetch(`/api/employees/${id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ excluded: true, exclusion_reason: 'Excluded from map' })
+                body: JSON.stringify({ excluded: true, exclusion_reason: 'Haritadan hariç tutuldu' })
             });
         }
         clearSelection();
@@ -182,7 +178,6 @@
         }).addTo(mainMap);
         employeeMarkerLayer = L.layerGroup().addTo(mainMap);
 
-        // Office marker with building icon
         L.marker([40.837384, 29.412109], {
             icon: L.divIcon({
                 className: 'office-marker',
@@ -191,7 +186,7 @@
                 </div>`,
                 iconSize: [20, 20], iconAnchor: [10, 10]
             })
-        }).addTo(mainMap).bindPopup('<b>Office</b>');
+        }).addTo(mainMap).bindPopup('<b>Ofis</b>');
     }
 
     function renderEmployeesOnMap() {
@@ -200,11 +195,10 @@
 
         employees.forEach(e => {
             const isSelected = selectedEmployees.has(e.id);
-            // Color: blue=selected, red=excluded, purple=active without route, green=has route
-            let color = '#10b981'; // default green (has route)
+            let color = '#10b981';
             if (isSelected) color = '#3699ff';
-            else if (e.excluded) color = '#f64e60'; // red for excluded
-            else if (!e.has_route) color = '#8b5cf6'; // purple for active without route
+            else if (e.excluded) color = '#f64e60';
+            else if (!e.has_route) color = '#8b5cf6';
             const size = isSelected ? 12 : 8;
 
             const marker = L.marker([e.lat, e.lon], {
@@ -232,7 +226,7 @@
         } catch (err) {
             console.error('Error loading employees:', err);
             document.getElementById('employees-tbody').innerHTML =
-                '<tr><td colspan="8" class="error">Error loading employees</td></tr>';
+                '<tr><td colspan="8" class="error">Personeller yüklenirken hata oluştu</td></tr>';
         }
     }
 
@@ -240,7 +234,7 @@
         const tbody = document.getElementById('employees-tbody');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty">No employees found</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">Personel bulunamadı</td></tr>';
             return;
         }
 
@@ -254,16 +248,16 @@
 
             <td>
                 <span class="status-badge ${e.excluded ? 'status-excluded' : 'status-active'}">
-                    ${e.excluded ? 'Excluded' : 'Active'}
+                    ${e.excluded ? 'Hariç' : 'Aktif'}
                 </span>
             </td>
             <td>
                 <button class="btn-icon ${e.excluded ? 'btn-include' : 'btn-exclude'}" 
                         onclick="event.stopPropagation(); toggleExclusion(${e.id}, ${e.excluded})" 
-                        title="${e.excluded ? 'Include employee' : 'Exclude employee'}">
-                    ${e.excluded 
-                        ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>' 
-                        : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'}
+                        title="${e.excluded ? 'Personeli dahil et' : 'Personeli hariç tut'}">
+                    ${e.excluded
+                ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>'
+                : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>'}
                 </button>
             </td>
         </tr>
@@ -290,19 +284,16 @@
         const emp = employees.find(e => e.id === id);
         if (!emp) return;
 
-        document.getElementById('modal-title').textContent = `Edit: ${emp.name}`;
+        document.getElementById('modal-title').textContent = `Düzenle: ${emp.name}`;
         document.getElementById('edit-employee-id').value = emp.id;
         document.getElementById('edit-excluded').checked = emp.excluded;
         document.getElementById('edit-exclusion-reason').value = emp.exclusion_reason || '';
 
-        // Show/hide exclusion reason
         document.getElementById('exclusion-reason-group').style.display =
             emp.excluded ? 'block' : 'none';
 
-        // Show modal
         document.getElementById('employee-modal').style.display = 'flex';
 
-        // Initialize map
         setTimeout(() => {
             if (employeeMap) {
                 employeeMap.remove();
@@ -310,15 +301,13 @@
             employeeMap = L.map('employee-map').setView([emp.lat, emp.lon], 15);
             L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(employeeMap);
 
-            // Home marker
             L.marker([emp.lat, emp.lon]).addTo(employeeMap)
-                .bindPopup('Home Location').openPopup();
+                .bindPopup('Ev Konumu').openPopup();
 
-            // Pickup point if different
             if (emp.pickup_point && (emp.pickup_point[0] !== emp.lat || emp.pickup_point[1] !== emp.lon)) {
                 L.marker([emp.pickup_point[0], emp.pickup_point[1]], {
                     icon: L.divIcon({ className: 'pickup-marker', html: '<div style="background:#10b981;width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [10, 10] })
-                }).addTo(employeeMap).bindPopup('Pickup Point');
+                }).addTo(employeeMap).bindPopup('Biniş Noktası');
             }
         }, 100);
     }
@@ -327,13 +316,11 @@
         document.getElementById('employee-modal').style.display = 'none';
     }
 
-    // Toggle exclusion reason visibility
     document.getElementById('edit-excluded').addEventListener('change', function () {
         document.getElementById('exclusion-reason-group').style.display =
             this.checked ? 'block' : 'none';
     });
 
-    // Form submission
     document.getElementById('employee-form').addEventListener('submit', async function (e) {
         e.preventDefault();
 
@@ -354,20 +341,18 @@
                 closeModal();
                 loadEmployees();
             } else {
-                alert('Error saving changes');
+                alert('Değişiklikler kaydedilirken hata oluştu');
             }
         } catch (err) {
             console.error('Error:', err);
-            alert('Error saving changes');
+            alert('Değişiklikler kaydedilirken hata oluştu');
         }
     });
 
     function viewOnMap(lat, lon, empId) {
-        // Scroll map into view and center on employee
         document.getElementById('employee-map-card').scrollIntoView({ behavior: 'smooth' });
         mainMap.setView([lat, lon], 13);
 
-        // Select the employee
         clearSelection();
         if (empId) {
             toggleSelection(empId);
@@ -381,7 +366,7 @@
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     excluded: !currentlyExcluded,
-                    exclusion_reason: currentlyExcluded ? '' : 'Excluded from table'
+                    exclusion_reason: currentlyExcluded ? '' : 'Tablodan hariç tutuldu'
                 })
             });
             await loadEmployees();
@@ -390,7 +375,6 @@
         }
     }
 
-    // Initialize
     initMainMap();
     loadEmployees();
 </script>

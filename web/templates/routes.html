@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Routes - Routing Engine{% endblock %}
-{% block page_title %}Routes{% endblock %}
+{% block title %}Rotalar - Rota Motoru{% endblock %}
+{% block page_title %}Rotalar{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -261,12 +261,12 @@
     <div class="routes-sidebar">
         <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
             <div class="card-header">
-                <h2>All Routes</h2>
+                <h2>Tüm Rotalar</h2>
                 <span class="badge" id="route-count">0</span>
             </div>
             <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
                 <div id="routes-container">
-                    <div class="loading" style="padding:20px;">Loading routes...</div>
+                    <div class="loading" style="padding:20px;">Rotalar yükleniyor...</div>
                 </div>
             </div>
         </div>
@@ -275,7 +275,7 @@
     <!-- Map -->
     <div class="card route-map-container">
         <div class="card-header">
-            <h2 id="map-title">Select a Route</h2>
+            <h2 id="map-title">Bir Rota Seçin</h2>
         </div>
         <div id="route-map"></div>
     </div>
@@ -316,7 +316,7 @@
 
         L.marker(officeLocation, {
             icon: L.divIcon({ className: 'office-icon', html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [12, 12] })
-        }).addTo(routeMap).bindPopup('<b>Office</b>');
+        }).addTo(routeMap).bindPopup('<b>Ofis</b>');
     }
 
     async function loadRoutes() {
@@ -328,7 +328,7 @@
             renderAllRoutesOnMap();
         } catch (err) {
             console.error('Error loading routes:', err);
-            document.getElementById('routes-container').innerHTML = '<div class="error" style="padding:20px;">Error loading routes</div>';
+            document.getElementById('routes-container').innerHTML = '<div class="error" style="padding:20px;">Rotalar yüklenirken hata oluştu</div>';
         }
     }
 
@@ -336,7 +336,7 @@
         const container = document.getElementById('routes-container');
 
         if (routes.length === 0) {
-            container.innerHTML = '<div class="empty" style="padding:20px;">No routes found</div>';
+            container.innerHTML = '<div class="empty" style="padding:20px;">Rota bulunamadı</div>';
             return;
         }
 
@@ -344,45 +344,45 @@
             <div class="route-item" data-index="${i}">
                 <div class="route-color" style="background:${colors[i % colors.length]};width:10px;height:10px;border-radius:50%;"></div>
                 <div class="route-info" style="flex:1;display:flex;flex-direction:column;justify-content:center;" onclick="selectRoute(${i})">
-                    <span class="route-name" style="font-weight:600;">Route ${i + 1}</span>
-                    <span class="route-meta" style="font-size:12px;color:var(--text-muted);">${r.distance_km} km <span style="color:var(--border-light); margin:0 4px;">|</span> ${Math.round(r.duration_min)} min <span style="color:var(--border-light); margin:0 4px;">|</span> ${r.employee_count} employees</span>
+                    <span class="route-name" style="font-weight:600;">Rota ${i + 1}</span>
+                    <span class="route-meta" style="font-size:12px;color:var(--text-muted);">${r.distance_km} km <span style="color:var(--border-light); margin:0 4px;">|</span> ${Math.round(r.duration_min)} dk <span style="color:var(--border-light); margin:0 4px;">|</span> ${r.employee_count} personel</span>
                 </div>
                 <div class="route-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="showRouteDetails(${i})">Details</button>
+                    <button class="btn btn-sm btn-secondary" onclick="showRouteDetails(${i})">Detaylar</button>
                 </div>
             </div>
             <div id="details-${i}" class="details-content" style="display:none;">
                 <div class="info-grid">
                     <div class="info-item">
-                        <span class="info-label">Distance</span>
+                        <span class="info-label">Mesafe</span>
                         <span class="info-value">${r.distance_km} km</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Duration</span>
-                        <span class="info-value">${Math.round(r.duration_min)} min</span>
+                        <span class="info-label">Süre</span>
+                        <span class="info-value">${Math.round(r.duration_min)} dk</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Stops</span>
+                        <span class="info-label">Duraklar</span>
                         <span class="info-value">${r.stop_count}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Bus Stops</span>
+                        <span class="info-label">Otobüs Durakları</span>
                         <span class="info-value">${r.bus_stop_count || 0}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Employees</span>
+                        <span class="info-label">Personeller</span>
                         <span class="info-value">${r.employee_count}</span>
                     </div>
                 </div>
                 <div>
-                    <span class="info-label">Employees</span>
-                    <div id="employees-${i}" class="employee-chips" style="margin-top:6px;">Loading...</div>
+                    <span class="info-label">Personeller</span>
+                    <div id="employees-${i}" class="employee-chips" style="margin-top:6px;">Yükleniyor...</div>
                 </div>
                 <div class="edit-actions">
-                    <button class="btn btn-sm btn-primary" onclick="enableEditMode(${i})">Edit Route</button>
-                    <button class="btn btn-sm btn-secondary" onclick="closeDetails(${i})">Close</button>
+                    <button class="btn btn-sm btn-primary" onclick="enableEditMode(${i})">Rotayı Düzenle</button>
+                    <button class="btn btn-sm btn-secondary" onclick="closeDetails(${i})">Kapat</button>
                 </div>
-                <p class="help-text">Click "Edit Route" to drag waypoints and modify the path.</p>
+                <p class="help-text">Ara noktaları sürükleyerek rotayı değiştirmek için "Rotayı Düzenle"ye tıklayın.</p>
             </div>
         `).join('');
     }
@@ -424,7 +424,7 @@
         // Update UI
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
         document.querySelector(`.route-item[data-index="${index}"]`)?.classList.add('selected');
-        document.getElementById('map-title').textContent = `Route ${index + 1}`;
+        document.getElementById('map-title').textContent = `Rota ${index + 1}`;
 
         // Reset all background polylines first
         backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
@@ -458,7 +458,7 @@
                 } else {
                     icon = L.divIcon({ className: 'stop', html: `<div style="background:${color};width:10px;height:10px;border-radius:50%;border:2px solid #fff;"></div>`, iconSize: [10, 10] });
                 }
-                L.marker([stop[0], stop[1]], { icon }).addTo(currentLayer).bindPopup(`Stop ${i + 1}`);
+                L.marker([stop[0], stop[1]], { icon }).addTo(currentLayer).bindPopup(`Durak ${i + 1}`);
             });
 
             // Show ALL bus stops along the route
@@ -474,7 +474,7 @@
                     });
                     const marker = L.marker([stop[0], stop[1]], { icon: busIcon })
                         .addTo(currentLayer)
-                        .bindPopup(`Bus Stop ${i + 1}`);
+                        .bindPopup(`Otobüs Durağı ${i + 1}`);
                     stopMarkers.push({ marker, stop });
                 });
 
@@ -486,8 +486,8 @@
                 }).then(r => r.json()).then(names => {
                     stopMarkers.forEach(({ marker, stop }, i) => {
                         const key = `${stop[0].toFixed(5)},${stop[1].toFixed(5)}`;
-                        const name = names[key] || 'Bus Stop';
-                        marker.setPopupContent(`<b>${name}</b><br>Stop ${i + 1} of ${stopMarkers.length}`);
+                        const name = names[key] || 'Otobüs Durağı';
+                        marker.setPopupContent(`<b>${name}</b><br>${stopMarkers.length} duraktan ${i + 1}. durak`);
                     });
                 }).catch(() => { });
             }
@@ -546,7 +546,7 @@
                     .then(names => {
                         route.bus_stops.forEach((stop, idx) => {
                             const key = `${stop[0].toFixed(5)},${stop[1].toFixed(5)}`;
-                            const name = names[key] || `Bus Stop ${idx + 1}`;
+                            const name = names[key] || `Otobüs Durağı ${idx + 1}`;
 
                             const busIcon = L.divIcon({
                                 className: 'bus-stop-icon',
@@ -571,7 +571,7 @@
                             });
                             L.marker([stop[0], stop[1]], { icon: busIcon })
                                 .addTo(currentLayer)
-                                .bindPopup(`<b>Bus Stop ${idx + 1}</b><br>Lat: ${stop[0].toFixed(5)}<br>Lon: ${stop[1].toFixed(5)}`);
+                                .bindPopup(`<b>Otobüs Durağı ${idx + 1}</b><br>Enlem: ${stop[0].toFixed(5)}<br>Boylam: ${stop[1].toFixed(5)}`);
                         });
                     });
             }
@@ -582,7 +582,7 @@
                 const cluster = await res.json();
 
                 if (cluster.error) {
-                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Cluster not found</span>';
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Küme bulunamadı</span>';
                     return;
                 }
 
@@ -629,7 +629,7 @@
                                             });
                                             L.marker([stop.lat, stop.lon], { icon: stopIcon })
                                                 .addTo(currentLayer)
-                                                .bindPopup(`<b>${stopName}</b><br>${stop.employees.length} employee(s):<br>${stop.employees.join('<br>')}`);
+                                                .bindPopup(`<b>${stopName}</b><br>${stop.employees.length} personel:<br>${stop.employees.join('<br>')}`);
                                         }
                                     });
                                 })
@@ -649,13 +649,13 @@
                             });
 
                             // Show distance to pickup point (from OSRM)
-                            let popupContent = `<b>${emp.name}</b><br>Home location`;
+                            let popupContent = `<b>${emp.name}</b><br>Ev konumu`;
                             if (emp.walking_distance != null) {
-                                popupContent += `<br><br><b>Distance to Stop:</b> ${Math.round(emp.walking_distance)} m`;
+                                popupContent += `<br><br><b>Durağa Mesafe:</b> ${Math.round(emp.walking_distance)} m`;
                             } else if (emp.pickup_point) {
-                                popupContent += `<br><br><i>Distance not available</i>`;
+                                popupContent += `<br><br><i>Mesafe bilgisi yok</i>`;
                             }
-                            popupContent += `<br><button class="btn btn-sm" style="margin-top:8px;background:#3699ff;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;" onclick="startReassign(${emp.id}, '${emp.name.replace(/'/g, "\\'")}')">Change Stop</button>`;
+                            popupContent += `<br><button class="btn btn-sm" style="margin-top:8px;background:#3699ff;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;" onclick="startReassign(${emp.id}, '${emp.name.replace(/'/g, "\\'")}')">Durağı Değiştir</button>`;
 
                             const marker = L.marker([emp.lat, emp.lon], { icon: empIcon, zIndexOffset: 1000 })
                                 .addTo(currentLayer)
@@ -677,11 +677,11 @@
                         });
                     }
                 } else {
-                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">No employees assigned</span>';
+                    document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Atanmış personel yok</span>';
                 }
             } catch (err) {
                 console.error('Error loading cluster:', err);
-                document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Error loading employees</span>';
+                document.getElementById(`employees-${index}`).innerHTML = '<span style="color:var(--text-muted);">Personeller yüklenirken hata oluştu</span>';
             }
         }
     }
@@ -694,7 +694,7 @@
 
         // Remove selection styling
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
-        document.getElementById('map-title').textContent = 'All Routes';
+        document.getElementById('map-title').textContent = 'Tüm Rotalar';
 
         // Clear focused route layer and show all routes
         if (currentLayer) {
@@ -760,7 +760,7 @@
                         iconSize: [24, 24],
                         iconAnchor: [12, 12]
                     })
-                }).bindPopup(`<b>Stop ${i + 1}</b><br>Drag to move`);
+                }).bindPopup(`<b>Durak ${i + 1}</b><br>Taşımak için sürükleyin`);
             }
         }).addTo(routeMap);
 
@@ -773,12 +773,12 @@
         // Update details panel with edit buttons
         const detailsEl = document.getElementById(`details-${index}`);
         detailsEl.querySelector('.edit-actions').innerHTML = `
-            <button class="btn btn-sm btn-success" onclick="saveRouteChanges(${index})">Save Changes</button>
-            <button class="btn btn-sm btn-secondary" onclick="resetRouteEdit(${index})">Reset</button>
-            <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${index})">Cancel</button>
+            <button class="btn btn-sm btn-success" onclick="saveRouteChanges(${index})">Değişiklikleri Kaydet</button>
+            <button class="btn btn-sm btn-secondary" onclick="resetRouteEdit(${index})">Sıfırla</button>
+            <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${index})">İptal</button>
         `;
 
-        showToast('Edit mode enabled - drag waypoints to modify route', 'info');
+        showToast('Düzenleme modu açıldı — ara noktaları sürükleyerek rotayı değiştirin', 'info');
     }
 
 
@@ -803,7 +803,7 @@
     function resetRouteEdit(index) {
         if (routingControl && originalWaypoints.length > 0) {
             routingControl.setWaypoints(originalWaypoints);
-            showToast('Route reset to original', 'info');
+            showToast('Rota orijinaline sıfırlandı', 'info');
         }
     }
 
@@ -814,14 +814,14 @@
         // Restore original edit actions
         const detailsEl = document.getElementById(`details-${index}`);
         detailsEl.querySelector('.edit-actions').innerHTML = `
-            <button class="btn btn-sm btn-primary" onclick="enableEditMode(${index})">Edit Route</button>
-            <button class="btn btn-sm btn-secondary" onclick="closeDetails(${index})">Close</button>
+            <button class="btn btn-sm btn-primary" onclick="enableEditMode(${index})">Rotayı Düzenle</button>
+            <button class="btn btn-sm btn-secondary" onclick="closeDetails(${index})">Kapat</button>
         `;
     }
 
     async function saveRouteChanges(index) {
         if (!routingControl || !lastCalculatedRoute) {
-            showToast('No changes to save', 'error');
+            showToast('Kaydedilecek değişiklik yok', 'error');
             return;
         }
 
@@ -829,7 +829,7 @@
         const detailsEl = document.getElementById(`details-${index}`);
         const saveBtn = detailsEl.querySelector('.btn-success');
         const originalText = saveBtn.innerHTML;
-        saveBtn.innerHTML = '<span class="spinner"></span>Saving...';
+        saveBtn.innerHTML = '<span class="spinner"></span>Kaydediliyor...';
         saveBtn.disabled = true;
 
         const waypoints = routingControl.getWaypoints()
@@ -858,7 +858,7 @@
                 const result = await res.json();
                 const reassignedCount = result.employees_reassigned || 0;
                 const busStopCount = result.bus_stop_count || 0;
-                showToast(`Route saved! ${reassignedCount} employee(s) reassigned, ${busStopCount} bus stops found.`, 'success');
+                showToast(`Rota kaydedildi! ${reassignedCount} personel yeniden atandı, ${busStopCount} otobüs durağı bulundu.`, 'success');
 
                 // Update local data
                 routes[index].stops = waypoints;
@@ -877,13 +877,13 @@
                 renderAllRoutesOnMap();
                 cancelEdit(index);
             } else {
-                showToast('Error saving route', 'error');
+                showToast('Rota kaydedilirken hata oluştu', 'error');
                 saveBtn.innerHTML = originalText;
                 saveBtn.disabled = false;
             }
         } catch (err) {
             console.error('Error saving route:', err);
-            showToast('Error saving route', 'error');
+            showToast('Rota kaydedilirken hata oluştu', 'error');
             saveBtn.innerHTML = originalText;
             saveBtn.disabled = false;
         }
@@ -962,7 +962,7 @@
         // Show instruction banner
         reassignBanner = document.createElement('div');
         reassignBanner.className = 'reassign-banner';
-        reassignBanner.innerHTML = `<span>Click anywhere on the map to assign <b>${empName}</b> — or pick a highlighted stop</span><button onclick="cancelReassign()">Cancel (Esc)</button>`;
+        reassignBanner.innerHTML = `<span><b>${empName}</b> için haritada herhangi bir yere tıklayın — veya vurgulanan bir durağı seçin</span><button onclick="cancelReassign()">İptal (Esc)</button>`;
         document.body.appendChild(reassignBanner);
 
         // Allow clicking anywhere on the map
@@ -992,7 +992,7 @@
             });
 
             if (res.ok) {
-                showToast(`${empName} reassigned to new stop`, 'success');
+                showToast(`${empName} yeni durağa atandı`, 'success');
                 // Refresh the route details view so markers & lines update
                 if (currentRouteIndex >= 0) {
                     showRouteDetails(currentRouteIndex);
@@ -1003,13 +1003,13 @@
             }
         } catch (err) {
             console.error('Error reassigning stop:', err);
-            showToast('Error reassigning stop', 'error');
+            showToast('Durak atanırken hata oluştu', 'error');
         }
     }
 
     function cancelReassign() {
         cancelReassignUI();
-        showToast('Reassign cancelled', 'info');
+        showToast('Atama iptal edildi', 'info');
     }
 
     function cancelReassignUI() {

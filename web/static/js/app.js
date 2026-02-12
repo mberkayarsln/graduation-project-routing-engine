@@ -52,10 +52,10 @@ function formatNumber(num) {
 
 // Format duration
 function formatDuration(minutes) {
-    if (minutes < 60) return `${Math.round(minutes)} min`;
+    if (minutes < 60) return `${Math.round(minutes)} dk`;
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
-    return `${hours}h ${mins}m`;
+    return `${hours}sa ${mins}dk`;
 }
 
 // Debounce function

@@ -1,72 +1,69 @@
 {% extends "base.html" %}
 
-{% block title %}Dashboard - Routing Engine{% endblock %}
-{% block page_title %}Dashboard{% endblock %}
+{% block title %}Kontrol Paneli - Rota Motoru{% endblock %}
+{% block page_title %}Kontrol Paneli{% endblock %}
 
 {% block header_actions %}
 <div style="display:flex;align-items:center;gap:10px;">
     <select id="optimization-mode">
-        <option value="budget">Budget-Friendly (fewer vehicles)</option>
-        <option value="balanced" selected>Balanced</option>
-        <option value="employee">Employee-Friendly (shorter walks)</option>
+        <option value="budget">Bütçe Dostu (daha az araç)</option>
+        <option value="balanced" selected>Dengeli</option>
+        <option value="employee">Personel Dostu (daha kısa yürüme)</option>
     </select>
-    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Generate Routes</button>
-    <button class="btn btn-primary" onclick="refreshStats()">Refresh</button>
+    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Rotaları Oluştur</button>
+    <button class="btn btn-primary" onclick="refreshStats()">Yenile</button>
 </div>
 {% endblock %}
 
 {% block content %}
-<!-- Overview Map -->
 <div class="card">
     <div class="card-header">
-        <h2>Route Overview</h2>
+        <h2>Rota Genel Görünümü</h2>
     </div>
     <div class="card-body">
         <div id="overview-map" style="height: 540px; border-radius: 12px;z-index: 1;"></div>
     </div>
 </div>
 
-<!-- Stats Cards -->
-<!-- Stats Cards -->
 <div class="stats-grid">
     <div class="stat-card">
-        <span class="stat-label">Total Employees</span>
+        <span class="stat-label">Toplam Personel</span>
         <span class="stat-value" id="stat-employees">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Active Employees</span>
+        <span class="stat-label">Aktif Personel</span>
         <span class="stat-value" id="stat-active">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Unassigned</span>
+        <span class="stat-label">Atanmamış</span>
         <span class="stat-value" id="stat-unassigned">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Efficiency</span>
+        <span class="stat-label">Verimlilik</span>
         <span class="stat-value" id="stat-efficiency">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Active Routes</span>
+        <span class="stat-label">Aktif Rotalar</span>
         <span class="stat-value" id="stat-routes">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Vehicles</span>
+        <span class="stat-label">Araçlar</span>
         <span class="stat-value" id="stat-vehicles">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Clusters</span>
+        <span class="stat-label">Kümeler</span>
         <span class="stat-value" id="stat-clusters">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Zones</span>
+        <span class="stat-label">Bölgeler</span>
         <span class="stat-value" id="stat-zones">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Total Distance</span>
+        <span class="stat-label">Toplam Mesafe</span>
         <span class="stat-value" id="stat-distance">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Total Duration</span>
+        <span class="stat-label">Toplam Süre</span>
         <span class="stat-value" id="stat-duration">--</span>
     </div>
 </div>
@@ -74,16 +71,13 @@
 
 {% block scripts %}
 <script>
-    // Initialize map
     const map = L.map('overview-map').setView([40.95, 29.2], 11);
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap, &copy; CARTO'
     }).addTo(map);
 
-    // Layer group for routes (so we can clear and reload)
     let routeLayer = L.layerGroup().addTo(map);
 
-    // Office marker with building icon
     const officeIcon = L.divIcon({
         className: 'custom-marker office-marker',
         html: `<div style="background:#3699ff;width:20px;height:20px;border-radius:6px;border:1px solid #fff;display:flex;align-items:center;justify-content:center;">
@@ -92,9 +86,8 @@
         iconSize: [20, 20], iconAnchor: [10, 10]
     });
     L.marker([40.837384, 29.412109], { icon: officeIcon }).addTo(map)
-        .bindPopup('<b>Office</b>');
+        .bindPopup('<b>Ofis</b>');
 
-    // Load stats and refresh map
     async function refreshStats() {
         try {
             const res = await fetch('/api/stats');
@@ -113,16 +106,13 @@
                 data.total_employees > 0 ?
                     ((data.active_employees - data.unassigned_employees) / data.active_employees * 100).toFixed(2) + '%' : '--';
 
-            // Also refresh the map
             loadRoutes();
         } catch (err) {
             console.error('Error loading stats:', err);
         }
     }
 
-    // Load routes on map
     async function loadRoutes() {
-        // Clear existing routes
         routeLayer.clearLayers();
 
         try {
@@ -134,7 +124,6 @@
             routes.forEach((route, i) => {
                 const color = colors[i % colors.length];
 
-                // Draw route path using coordinates (actual road path)
                 const pathCoords = route.coordinates && route.coordinates.length > 1 ? route.coordinates : route.stops;
                 if (pathCoords && pathCoords.length > 1) {
                     const latlngs = pathCoords.map(s => [s[0], s[1]]);
@@ -145,7 +134,6 @@
                     }).addTo(routeLayer);
                 }
 
-                // Add cluster center marker
                 if (route.center) {
                     const clusterIcon = L.divIcon({
                         className: 'custom-marker cluster-marker',
@@ -153,7 +141,7 @@
                         iconSize: [20, 20]
                     });
                     L.marker([route.center[0], route.center[1]], { icon: clusterIcon }).addTo(routeLayer)
-                        .bindPopup(`<b>Route ${i + 1}</b><br>Distance: ${route.distance_km} km<br>Duration: ${Math.round(route.duration_min)} min`);
+                        .bindPopup(`<b>Rota ${i + 1}</b><br>Mesafe: ${route.distance_km} km<br>Süre: ${Math.round(route.duration_min)} dk`);
                 }
             });
         } catch (err) {
@@ -161,7 +149,6 @@
         }
     }
 
-    // Load current optimization mode on init
     async function loadOptimizationMode() {
         try {
             const res = await fetch('/api/optimization-mode');
@@ -181,7 +168,7 @@
         const mode = document.getElementById('optimization-mode').value;
 
         try {
-            btn.textContent = 'Generating...';
+            btn.textContent = 'Oluşturuluyor...';
             btn.disabled = true;
 
             const res = await fetch('/api/generate-routes', {
@@ -192,23 +179,21 @@
             const data = await res.json();
 
             if (data.success) {
-                // Refresh everything
                 await refreshStats();
                 await loadRoutes();
-                alert('Routes generated successfully!');
+                alert('Rotalar başarıyla oluşturuldu!');
             } else {
-                alert('Error: ' + (data.error || 'Unknown error'));
+                alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
             }
         } catch (err) {
             console.error('Error generating routes:', err);
-            alert('Error generating routes');
+            alert('Rota oluşturulurken hata oluştu');
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;
         }
     }
 
-    // Initialize
     loadOptimizationMode();
     refreshStats();
     loadRoutes();

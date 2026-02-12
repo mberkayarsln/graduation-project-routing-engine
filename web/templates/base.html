@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Routing Engine{% endblock %}</title>
+    <title>{% block title %}Rota Motoru{% endblock %}</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -20,47 +20,45 @@
 </head>
 
 <body>
-    <!-- Sidebar Navigation -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <a href="/" class="logo">
-                <span class="logo-text">RouteEngine</span>
+                <span class="logo-text">Routing Engine</span>
             </a>
         </div>
 
         <nav class="sidebar-nav">
             <a href="/" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <span class="nav-text">Dashboard</span>
+                <span class="nav-text">Kontrol Paneli</span>
             </a>
             <a href="/employees" class="nav-item {% if request.endpoint == 'employees_page' %}active{% endif %}">
-                <span class="nav-text">Employees</span>
+                <span class="nav-text">Personeller</span>
             </a>
             <a href="/clusters" class="nav-item {% if request.endpoint == 'clusters_page' %}active{% endif %}">
-                <span class="nav-text">Clusters</span>
+                <span class="nav-text">Kümeler</span>
             </a>
             <a href="/routes" class="nav-item {% if request.endpoint == 'routes_page' %}active{% endif %}">
-                <span class="nav-text">Routes</span>
+                <span class="nav-text">Rotalar</span>
             </a>
             <a href="/vehicles" class="nav-item {% if request.endpoint == 'vehicles_page' %}active{% endif %}">
-                <span class="nav-text">Vehicles</span>
+                <span class="nav-text">Araçlar</span>
             </a>
             <a href="/cost-report" class="nav-item {% if request.endpoint == 'cost_report_page' %}active{% endif %}">
-                <span class="nav-text">Cost Report</span>
+                <span class="nav-text">Maliyet Raporu</span>
             </a>
         </nav>
 
         <div class="sidebar-footer">
             <div class="sidebar-status">
                 <span class="status-dot"></span>
-                <span class="status-text">Connected</span>
+                <span class="status-text">Bağlı</span>
             </div>
         </div>
     </aside>
 
-    <!-- Main Content -->
     <main class="main-content">
         <header class="page-header">
-            <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            <h1 class="page-title">{% block page_title %}Kontrol Paneli{% endblock %}</h1>
             <div class="header-actions">
                 {% block header_actions %}{% endblock %}
             </div>

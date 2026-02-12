@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Edit Route - Routing Engine{% endblock %}
-{% block page_title %}Edit Route{% endblock %}
+{% block title %}Rota Düzenle - Rota Motoru{% endblock %}
+{% block page_title %}Rota Düzenle{% endblock %}
 
 {% block head %}
 <!-- Leaflet Routing Machine CSS -->
@@ -104,7 +104,7 @@
 {% endblock %}
 
 {% block header_actions %}
-<a href="/routes" class="btn btn-secondary">Back to Routes</a>
+<a href="/routes" class="btn btn-secondary">Rotalara Dön</a>
 {% endblock %}
 
 {% block content %}
@@ -114,11 +114,11 @@
         <!-- Route Selection -->
         <div class="card">
             <div class="card-header">
-                <h2>Select Route</h2>
+                <h2>Rota Seçin</h2>
             </div>
             <div class="card-body">
                 <select id="route-select" onchange="loadRouteForEdit()">
-                    <option value="">-- Select a route --</option>
+                    <option value="">-- Bir rota seçin --</option>
                 </select>
             </div>
         </div>
@@ -126,19 +126,19 @@
         <!-- Route Info -->
         <div class="card" id="route-info-panel" style="display:none;">
             <div class="card-header">
-                <h2>Route Info</h2>
+                <h2>Rota Bilgisi</h2>
             </div>
             <div class="card-body">
                 <div class="info-stat">
-                    <span class="info-label">Distance</span>
+                    <span class="info-label">Mesafe</span>
                     <span class="info-value" id="edit-distance">--</span>
                 </div>
                 <div class="info-stat">
-                    <span class="info-label">Duration</span>
+                    <span class="info-label">Süre</span>
                     <span class="info-value" id="edit-duration">--</span>
                 </div>
                 <div class="info-stat">
-                    <span class="info-label">Waypoints</span>
+                    <span class="info-label">Ara Noktalar</span>
                     <span class="info-value" id="edit-waypoints">--</span>
                 </div>
             </div>
@@ -147,17 +147,17 @@
         <!-- Actions -->
         <div class="card" id="actions-panel" style="display:none;">
             <div class="card-header">
-                <h2>Actions</h2>
+                <h2>İşlemler</h2>
             </div>
             <div class="card-body">
                 <div class="edit-actions">
-                    <button class="btn btn-secondary btn-block" onclick="addWaypoint()">Add Waypoint</button>
-                    <button class="btn btn-secondary btn-block" onclick="resetRoute()">Reset Route</button>
-                    <button class="btn btn-success btn-block" onclick="saveRoute()">Save Changes</button>
-                    <button class="btn btn-primary btn-block" onclick="exportRoute()">Export JSON</button>
+                    <button class="btn btn-secondary btn-block" onclick="addWaypoint()">Ara Nokta Ekle</button>
+                    <button class="btn btn-secondary btn-block" onclick="resetRoute()">Rotayı Sıfırla</button>
+                    <button class="btn btn-success btn-block" onclick="saveRoute()">Değişiklikleri Kaydet</button>
+                    <button class="btn btn-primary btn-block" onclick="exportRoute()">JSON Dışa Aktar</button>
                 </div>
                 <div class="help-text">
-                    Drag markers to edit the route. Click on the route line to add intermediate points.
+                    Rotayı düzenlemek için işaretçileri sürükleyin. Ara nokta eklemek için rota çizgisine tıklayın.
                 </div>
             </div>
         </div>
@@ -199,7 +199,7 @@
                 html: '<div style="background:#6366f1;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
                 iconSize: [14, 14]
             })
-        }).addTo(editMap).bindPopup('<b>Office</b>');
+        }).addTo(editMap).bindPopup('<b>Ofis</b>');
     }
 
     // Load routes list
@@ -212,7 +212,7 @@
             routes.forEach((r, i) => {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `Route ${i + 1} - ${r.distance_km} km, ${Math.round(r.duration_min)} min`;
+                option.textContent = `Rota ${i + 1} - ${r.distance_km} km, ${Math.round(r.duration_min)} dk`;
                 select.appendChild(option);
             });
         } catch (err) {
@@ -283,7 +283,7 @@
                             iconSize: [16, 16],
                             iconAnchor: [8, 8]
                         })
-                    }).bindPopup('<b>Office</b>');
+                    }).bindPopup('<b>Ofis</b>');
                 }
 
                 return L.marker(waypoint.latLng, {
@@ -294,7 +294,7 @@
                         iconSize: [24, 24],
                         iconAnchor: [12, 12]
                     })
-                }).bindPopup('<b>Stop ' + (i + 1) + '</b><br>Drag to move');
+                }).bindPopup('<b>Durak ' + (i + 1) + '</b><br>Taşımak için sürükleyin');
             }
         }).addTo(editMap);
 
@@ -304,7 +304,7 @@
             lastCalculatedRoute = route;  // Store for saving
             const summary = route.summary;
             document.getElementById('edit-distance').textContent = (summary.totalDistance / 1000).toFixed(2) + ' km';
-            document.getElementById('edit-duration').textContent = Math.round(summary.totalTime / 60) + ' min';
+            document.getElementById('edit-duration').textContent = Math.round(summary.totalTime / 60) + ' dk';
             document.getElementById('edit-waypoints').textContent = routingControl.getWaypoints().filter(wp => wp.latLng).length;
         });
 
@@ -337,7 +337,7 @@
 
         // Update info panel with stored data
         document.getElementById('edit-distance').textContent = route.distance_km + ' km';
-        document.getElementById('edit-duration').textContent = Math.round(route.duration_min) + ' min';
+        document.getElementById('edit-duration').textContent = Math.round(route.duration_min) + ' dk';
         document.getElementById('edit-waypoints').textContent = route.stop_count;
     }
 
@@ -349,14 +349,14 @@
         const waypoints = routingControl.getWaypoints();
         const newWaypoints = [...waypoints.slice(0, -1), L.latLng(center.lat, center.lng), waypoints[waypoints.length - 1]];
         routingControl.setWaypoints(newWaypoints.map(wp => wp.latLng || wp));
-        showToast('Waypoint added at map center');
+        showToast('Harita merkezine ara nokta eklendi');
     }
 
     // Reset to original waypoints
     function resetRoute() {
         if (!routingControl) return;
         routingControl.setWaypoints(originalWaypoints);
-        showToast('Route reset to original');
+        showToast('Rota orijinaline sıfırlandı');
     }
 
     // Store the last calculated route for saving
@@ -397,11 +397,11 @@
             });
 
             if (res.ok) {
-                showToast('Route saved successfully!', 'success');
+                showToast('Rota başarıyla kaydedildi!', 'success');
                 // Update original waypoints
                 originalWaypoints = waypoints.map(s => L.latLng(s[0], s[1]));
             } else {
-                showToast('Error saving route', 'error');
+                showToast('Rota kaydedilirken hata oluştu', 'error');
             }
         } catch (err) {
             console.error('Error saving route:', err);
@@ -434,7 +434,7 @@
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        showToast('Route exported!');
+        showToast('Rota dışa aktarıldı!');
     }
 
     // Toast notification

@@ -1,33 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Clusters - Routing Engine{% endblock %}
-{% block page_title %}Clusters{% endblock %}
+{% block title %}Kümeler - Rota Motoru{% endblock %}
+{% block page_title %}Kümeler{% endblock %}
 
 {% block header_actions %}
-<button class="btn btn-primary" onclick="loadClusters()">Refresh</button>
+<button class="btn btn-primary" onclick="loadClusters()">Yenile</button>
 {% endblock %}
 
 {% block content %}
 <div class="clusters-layout">
-    <!-- Cluster List Sidebar -->
     <div class="clusters-sidebar">
         <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
             <div class="card-header">
-                <h2>All Clusters</h2>
+                <h2>Tüm Kümeler</h2>
                 <span class="badge" id="cluster-count">0</span>
             </div>
             <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
                 <div id="clusters-container">
-                    <div class="loading" style="padding:20px;">Loading clusters...</div>
+                    <div class="loading" style="padding:20px;">Kümeler yükleniyor...</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Map -->
     <div class="card cluster-map-container">
         <div class="card-header">
-            <h2 id="map-title">All Clusters</h2>
+            <h2 id="map-title">Tüm Kümeler</h2>
         </div>
         <div id="cluster-map"></div>
     </div>
@@ -123,12 +121,10 @@
     let currentClusterIndex = -1;
     const officeLocation = [40.837384, 29.412109];
 
-    // Colors matching employee map: green = has route, red = no route
     function getClusterColor(hasRoute) {
         return hasRoute ? '#10b981' : '#f64e60';
     }
 
-    // Initialize map
     function initMap() {
         clusterMap = L.map('cluster-map').setView([40.95, 29.2], 11);
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
@@ -142,7 +138,7 @@
                 iconSize: [14, 14],
                 iconAnchor: [7, 7]
             })
-        }).addTo(clusterMap).bindPopup('<b>Office</b>');
+        }).addTo(clusterMap).bindPopup('<b>Ofis</b>');
     }
 
     async function loadClusters() {
@@ -154,7 +150,7 @@
             renderAllClustersOnMap();
         } catch (err) {
             console.error('Error loading clusters:', err);
-            document.getElementById('clusters-container').innerHTML = '<div class="error" style="padding:20px;">Error loading clusters</div>';
+            document.getElementById('clusters-container').innerHTML = '<div class="error" style="padding:20px;">Kümeler yüklenirken hata oluştu</div>';
         }
     }
 
@@ -162,7 +158,7 @@
         const container = document.getElementById('clusters-container');
 
         if (clusters.length === 0) {
-            container.innerHTML = '<div class="empty" style="padding:20px;">No clusters found</div>';
+            container.innerHTML = '<div class="empty" style="padding:20px;">Küme bulunamadı</div>';
             return;
         }
 
@@ -170,11 +166,11 @@
             <div class="cluster-item" data-index="${i}" onclick="selectCluster(${i})">
                 <div class="cluster-color" style="background:${getClusterColor(c.has_route)};width:12px;height:12px;border-radius:50%;"></div>
                 <div class="cluster-info">
-                    <span class="cluster-name">Cluster ${c.id}</span>
-                    <span class="cluster-meta">${c.employee_count} employees <span style="color:var(--border-light); margin:0 4px;">|</span> Zone ${c.zone_id || '-'}</span>
+                    <span class="cluster-name">Küme ${c.id}</span>
+                    <span class="cluster-meta">${c.employee_count} personel <span style="color:var(--border-light); margin:0 4px;">|</span> Bölge ${c.zone_id || '-'}</span>
                 </div>
                 <span class="cluster-badge ${c.has_route ? 'has-route' : 'no-route'}">
-                    ${c.has_route ? 'Route' : 'No Route'}
+                    ${c.has_route ? 'Rota Var' : 'Rota Yok'}
                 </span>
             </div>
         `).join('');
@@ -189,7 +185,6 @@
         clusters.forEach((cluster, i) => {
             const color = getClusterColor(cluster.has_route);
 
-            // Add cluster center marker
             const centerIcon = L.divIcon({
                 className: 'cluster-center',
                 html: `<div style="background:${color};color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:11px;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);">${cluster.id}</div>`,
@@ -198,10 +193,9 @@
             });
             L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
                 .addTo(currentLayer)
-                .bindPopup(`<b>Cluster ${cluster.id}</b><br>${cluster.employee_count} employees<br>${cluster.has_route ? 'Has route' : 'No route'}`);
+                .bindPopup(`<b>Küme ${cluster.id}</b><br>${cluster.employee_count} personel<br>${cluster.has_route ? 'Rota var' : 'Rota yok'}`);
         });
 
-        // Fit bounds to show all clusters
         if (clusters.length > 0) {
             const bounds = clusters.map(c => [c.center[0], c.center[1]]);
             clusterMap.fitBounds(bounds, { padding: [50, 50] });
@@ -213,21 +207,17 @@
         const color = getClusterColor(cluster.has_route);
         currentClusterIndex = index;
 
-        // Update UI
         document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('selected'));
         document.querySelector(`.cluster-item[data-index="${index}"]`)?.classList.add('selected');
-        document.getElementById('map-title').textContent = `Cluster ${cluster.id}`;
+        document.getElementById('map-title').textContent = `Küme ${cluster.id}`;
 
-        // Clear and redraw
         if (currentLayer) clusterMap.removeLayer(currentLayer);
         currentLayer = L.layerGroup().addTo(clusterMap);
 
-        // Fetch cluster details with employees
         try {
             const res = await fetch(`/api/clusters/${cluster.id}`);
             const clusterDetails = await res.json();
 
-            // Draw cluster center
             const centerIcon = L.divIcon({
                 className: 'cluster-center',
                 html: `<div style="background:${color};color:#fff;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:12px;border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.4);">${cluster.id}</div>`,
@@ -236,12 +226,11 @@
             });
             L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
                 .addTo(currentLayer)
-                .bindPopup(`<b>Cluster ${cluster.id} Center</b><br>${cluster.employee_count} employees`);
+                .bindPopup(`<b>Küme ${cluster.id} Merkezi</b><br>${cluster.employee_count} personel`);
 
-            // Draw employees
             if (clusterDetails.employees) {
                 const bounds = [[cluster.center[0], cluster.center[1]]];
-                
+
                 clusterDetails.employees.forEach(emp => {
                     const empIcon = L.divIcon({
                         className: 'employee-marker',
@@ -258,7 +247,6 @@
                 clusterMap.fitBounds(bounds, { padding: [50, 50] });
             }
 
-            // Draw route if exists
             if (cluster.has_route && cluster.route_coordinates && cluster.route_coordinates.length > 1) {
                 const latlngs = cluster.route_coordinates.map(c => [c[0], c[1]]);
                 L.polyline(latlngs, { color: color, weight: 4, opacity: 0.8 }).addTo(currentLayer);
@@ -269,7 +257,6 @@
         }
     }
 
-    // Initialize
     initMap();
     loadClusters();
 </script>
