@@ -182,6 +182,76 @@
         opacity: 0.7;
         cursor: not-allowed;
     }
+
+    /* Reassign mode styles */
+    @keyframes pulse-marker {
+
+        0%,
+        100% {
+            transform: scale(1);
+            box-shadow: 0 0 0 0 rgba(54, 153, 255, 0.7);
+        }
+
+        50% {
+            transform: scale(1.3);
+            box-shadow: 0 0 0 8px rgba(54, 153, 255, 0);
+        }
+    }
+
+    .reassign-active-marker div {
+        animation: pulse-marker 1.2s ease-in-out infinite !important;
+        background: #3699ff !important;
+        width: 14px !important;
+        height: 14px !important;
+    }
+
+    .reassign-target div {
+        cursor: pointer !important;
+        box-shadow: 0 0 8px 3px rgba(16, 185, 129, 0.8) !important;
+        width: 14px !important;
+        height: 14px !important;
+    }
+
+    .reassign-banner {
+        position: fixed;
+        top: 12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(54, 153, 255, 0.95);
+        color: #fff;
+        padding: 10px 24px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        z-index: 2000;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+        animation: slideIn 0.3s ease;
+    }
+
+    .reassign-banner button {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+        color: #fff;
+        padding: 4px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+
+    .reassign-banner button:hover {
+        background: rgba(255, 255, 255, 0.35);
+    }
+
+    .reassign-cursor {
+        cursor: crosshair !important;
+    }
+
+    .reassign-cursor .leaflet-interactive {
+        cursor: crosshair !important;
+    }
 </style>
 {% endblock %}
 
@@ -225,6 +295,15 @@
     let originalWaypoints = [];
     let isEditMode = false;
     const officeLocation = [40.837384, 29.412109];
+
+    // Reassign mode state
+    let reassignMode = false;
+    let reassignEmployeeId = null;
+    let reassignEmployeeName = '';
+    let reassignEmployeeMarker = null;
+    let reassignBusStopMarkers = [];
+    let reassignBanner = null;
+    let currentClusterData = null;  // keep loaded cluster for re-rendering
 
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F', '#FF9FF3', '#54A0FF'];
 
@@ -320,15 +399,15 @@
                 const latlngs = pathCoords.map(s => [s[0], s[1]]);
                 const polyline = L.polyline(latlngs, { color: color, weight: 3, opacity: 0.6 }).addTo(routeMap);
                 backgroundPolylines.push(polyline);
-                
+
                 // Add click handler to open route details
                 polyline.on('click', () => showRouteDetails(i));
-                
+
                 // Highlight on hover
-                polyline.on('mouseover', function() {
+                polyline.on('mouseover', function () {
                     this.setStyle({ weight: 6, opacity: 1 });
                 });
-                polyline.on('mouseout', function() {
+                polyline.on('mouseout', function () {
                     if (currentRouteIndex !== i) {
                         this.setStyle({ weight: 3, opacity: 0.6 });
                     }
@@ -349,7 +428,7 @@
 
         // Reset all background polylines first
         backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
-        
+
         // Bold the background polyline for this route
         if (backgroundPolylines[index]) {
             backgroundPolylines[index].setStyle({ weight: 6, opacity: 1 });
@@ -398,7 +477,7 @@
                         .bindPopup(`Bus Stop ${i + 1}`);
                     stopMarkers.push({ marker, stop });
                 });
-                
+
                 // Resolve stop names asynchronously
                 fetch('/api/stops/names', {
                     method: 'POST',
@@ -410,7 +489,7 @@
                         const name = names[key] || 'Bus Stop';
                         marker.setPopupContent(`<b>${name}</b><br>Stop ${i + 1} of ${stopMarkers.length}`);
                     });
-                }).catch(() => {});
+                }).catch(() => { });
             }
 
             routeMap.fitBounds(latlngs);
@@ -468,7 +547,7 @@
                         route.bus_stops.forEach((stop, idx) => {
                             const key = `${stop[0].toFixed(5)},${stop[1].toFixed(5)}`;
                             const name = names[key] || `Bus Stop ${idx + 1}`;
-                            
+
                             const busIcon = L.divIcon({
                                 className: 'bus-stop-icon',
                                 html: '<div style="background:#10b981;width:12px;height:12px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 4px rgba(0,0,0,0.2);"></div>',
@@ -560,6 +639,7 @@
                         }
 
                         // Add employee home markers and lines to their pickup points
+                        currentClusterData = cluster;
                         cluster.employees.forEach(emp => {
                             const empIcon = L.divIcon({
                                 className: 'employee-marker',
@@ -567,7 +647,7 @@
                                 iconSize: [10, 10],
                                 iconAnchor: [5, 5]
                             });
-                            
+
                             // Show distance to pickup point (from OSRM)
                             let popupContent = `<b>${emp.name}</b><br>Home location`;
                             if (emp.walking_distance != null) {
@@ -575,10 +655,12 @@
                             } else if (emp.pickup_point) {
                                 popupContent += `<br><br><i>Distance not available</i>`;
                             }
-                            
-                            L.marker([emp.lat, emp.lon], { icon: empIcon, zIndexOffset: 1000 })
+                            popupContent += `<br><button class="btn btn-sm" style="margin-top:8px;background:#3699ff;color:#fff;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:11px;" onclick="startReassign(${emp.id}, '${emp.name.replace(/'/g, "\\'")}')">Change Stop</button>`;
+
+                            const marker = L.marker([emp.lat, emp.lon], { icon: empIcon, zIndexOffset: 1000 })
                                 .addTo(currentLayer)
                                 .bindPopup(popupContent);
+                            marker._empId = emp.id;
 
                             // Draw line from employee to their pickup point
                             if (emp.pickup_point) {
@@ -609,20 +691,20 @@
         if (isEditMode) {
             disableEditMode();
         }
-        
+
         // Remove selection styling
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
         document.getElementById('map-title').textContent = 'All Routes';
-        
+
         // Clear focused route layer and show all routes
         if (currentLayer) {
             routeMap.removeLayer(currentLayer);
             currentLayer = null;
         }
-        
+
         // Reset all background polylines to default style
         backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
-        
+
         currentRouteIndex = -1;
     }
 
@@ -817,6 +899,154 @@
         document.body.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
     }
+
+    // =========================================================================
+    // Stop Reassignment Mode
+    // =========================================================================
+
+    function startReassign(empId, empName) {
+        if (reassignMode) cancelReassign();
+
+        reassignMode = true;
+        reassignEmployeeId = empId;
+        reassignEmployeeName = empName;
+
+        // Close any open popup
+        routeMap.closePopup();
+
+        // Highlight the employee marker
+        if (currentLayer) {
+            currentLayer.eachLayer(layer => {
+                if (layer._empId === empId && layer.getElement) {
+                    const el = layer.getElement();
+                    if (el) el.classList.add('reassign-active-marker');
+                    reassignEmployeeMarker = layer;
+                }
+            });
+        }
+
+        // Make bus stop markers glow and register click handlers
+        reassignBusStopMarkers = [];
+        const route = routes[currentRouteIndex];
+        if (route && route.bus_stops && route.bus_stops.length > 0) {
+            route.bus_stops.forEach((stop) => {
+                const targetIcon = L.divIcon({
+                    className: 'bus-stop-icon reassign-target',
+                    html: '<div style="background:#10b981;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+                const m = L.marker([stop[0], stop[1]], { icon: targetIcon, zIndexOffset: 2000 })
+                    .addTo(currentLayer)
+                    .on('click', () => confirmReassign(stop[0], stop[1]));
+                reassignBusStopMarkers.push(m);
+            });
+        }
+
+        // Also allow clicking route stops (waypoints) as targets
+        if (route && route.stops) {
+            route.stops.forEach((stop) => {
+                const targetIcon = L.divIcon({
+                    className: 'stop-icon reassign-target',
+                    html: '<div style="background:#f59e0b;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
+                    iconSize: [14, 14],
+                    iconAnchor: [7, 7]
+                });
+                const m = L.marker([stop[0], stop[1]], { icon: targetIcon, zIndexOffset: 2000 })
+                    .addTo(currentLayer)
+                    .on('click', () => confirmReassign(stop[0], stop[1]));
+                reassignBusStopMarkers.push(m);
+            });
+        }
+
+        // Show instruction banner
+        reassignBanner = document.createElement('div');
+        reassignBanner.className = 'reassign-banner';
+        reassignBanner.innerHTML = `<span>Click anywhere on the map to assign <b>${empName}</b> — or pick a highlighted stop</span><button onclick="cancelReassign()">Cancel (Esc)</button>`;
+        document.body.appendChild(reassignBanner);
+
+        // Allow clicking anywhere on the map
+        routeMap.getContainer().classList.add('reassign-cursor');
+        routeMap.on('click', onMapClickReassign);
+    }
+
+    function onMapClickReassign(e) {
+        if (!reassignMode) return;
+        confirmReassign(e.latlng.lat, e.latlng.lng);
+    }
+
+    async function confirmReassign(lat, lon) {
+        if (!reassignMode) return;
+
+        const empId = reassignEmployeeId;
+        const empName = reassignEmployeeName;
+
+        // Remove banner immediately for responsiveness
+        cancelReassignUI();
+
+        try {
+            const res = await fetch(`/api/employees/${empId}/pickup-point`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat, lon })
+            });
+
+            if (res.ok) {
+                showToast(`${empName} reassigned to new stop`, 'success');
+                // Refresh the route details view so markers & lines update
+                if (currentRouteIndex >= 0) {
+                    showRouteDetails(currentRouteIndex);
+                }
+            } else {
+                const err = await res.json();
+                showToast('Error: ' + (err.error || 'Unknown error'), 'error');
+            }
+        } catch (err) {
+            console.error('Error reassigning stop:', err);
+            showToast('Error reassigning stop', 'error');
+        }
+    }
+
+    function cancelReassign() {
+        cancelReassignUI();
+        showToast('Reassign cancelled', 'info');
+    }
+
+    function cancelReassignUI() {
+        reassignMode = false;
+        reassignEmployeeId = null;
+        reassignEmployeeName = '';
+
+        // Remove highlight from employee marker
+        if (reassignEmployeeMarker && reassignEmployeeMarker.getElement) {
+            const el = reassignEmployeeMarker.getElement();
+            if (el) el.classList.remove('reassign-active-marker');
+        }
+        reassignEmployeeMarker = null;
+
+        // Remove target bus stop markers
+        reassignBusStopMarkers.forEach(m => {
+            if (currentLayer) currentLayer.removeLayer(m);
+        });
+        reassignBusStopMarkers = [];
+
+        // Remove map click handler and cursor
+        routeMap.off('click', onMapClickReassign);
+        routeMap.getContainer().classList.remove('reassign-cursor');
+
+        // Remove banner
+        if (reassignBanner) {
+            reassignBanner.remove();
+            reassignBanner = null;
+        }
+    }
+
+    // Escape key to cancel reassign
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && reassignMode) {
+            cancelReassign();
+        }
+    });
 
     // Initialize
     initMap();

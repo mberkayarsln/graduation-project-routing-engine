@@ -272,6 +272,26 @@ def api_update_employee(id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/employees/<int:id>/pickup-point', methods=['PUT'])
+def api_update_employee_pickup(id):
+    """Update an employee's assigned pickup point (stop)."""
+    try:
+        e = employee_repo.find_by_id(id)
+        if not e:
+            return jsonify({'error': 'Employee not found'}), 404
+
+        data = request.json
+        lat = data.get('lat')
+        lon = data.get('lon')
+        if lat is None or lon is None:
+            return jsonify({'error': 'lat and lon are required'}), 400
+
+        employee_repo.update_pickup_point(id, (float(lat), float(lon)))
+        return jsonify({'success': True, 'pickup_point': [float(lat), float(lon)]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # =============================================================================
 # REST API - Clusters & Routes
 # =============================================================================
