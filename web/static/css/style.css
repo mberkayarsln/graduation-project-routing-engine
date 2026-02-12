@@ -275,7 +275,7 @@ body {
 .stat-card:nth-child(7)::after { background-color: var(--color-pink); }
 
 .stat-value {
-    font-size: 32px;
+    font-size: 22px;
     font-weight: 700;
     color: var(--text-primary);
     margin-bottom: 4px;
@@ -750,4 +750,200 @@ select:focus {
     font-weight:500;
     cursor:pointer;
     max-width: 200px;
+}
+
+/* =============================================================================
+   Cost Report
+   ============================================================================= */
+
+.print-header {
+    display: none;
+}
+
+.cr-params-card .card-body {
+    padding: 16px 24px;
+}
+
+.cr-params-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 24px;
+}
+
+.cr-param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.cr-param-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 4px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.cr-param-group label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-weight: 400;
+}
+
+.cr-param-group label input {
+    width: 110px;
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.cr-summary-grid {
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+}
+
+.cr-summary-grid .stat-value {
+    font-size: 22px;
+    color: var(--color-success);
+}
+
+.cr-summary-grid .stat-card:last-child .stat-value {
+    color: var(--accent-primary);
+}
+
+.cr-table {
+    font-variant-numeric: tabular-nums;
+}
+
+.cr-section-row {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    background-color: rgba(59, 130, 246, 0.05);
+    padding: 10px 16px !important;
+    border-bottom: 1px solid var(--border-color) !important;
+}
+
+.cr-subtotal-row {
+    background-color: rgba(255, 255, 255, 0.02);
+}
+
+.cr-highlight-row {
+    background-color: rgba(16, 185, 129, 0.08);
+    border-top: 2px solid var(--color-success) !important;
+}
+
+.cr-highlight-row td {
+    padding: 16px !important;
+    font-size: 15px;
+    color: var(--color-success);
+}
+
+/* =============================================================================
+   Print Styles
+   ============================================================================= */
+
+@media print {
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    body {
+        background: #fff !important;
+        color: #111 !important;
+        font-size: 11px;
+    }
+
+    .sidebar,
+    .page-header,
+    .header-actions,
+    .cr-params-card {
+        display: none !important;
+    }
+
+    .main-content {
+        margin-left: 0 !important;
+    }
+
+    .page-content {
+        padding: 0 !important;
+    }
+
+    .print-header {
+        display: block !important;
+        text-align: center;
+        padding: 24px 0 16px;
+        border-bottom: 2px solid #111;
+        margin-bottom: 20px;
+    }
+
+    .print-header h1 {
+        font-size: 20px;
+        color: #111;
+        margin-bottom: 4px;
+    }
+
+    .print-date {
+        font-size: 12px;
+        color: #555;
+    }
+
+    .card {
+        border: 1px solid #ccc !important;
+        background: #fff !important;
+        break-inside: avoid;
+    }
+
+    .card-header {
+        background: #f5f5f5 !important;
+        border-bottom: 1px solid #ccc !important;
+    }
+
+    .card-header h2 {
+        color: #111 !important;
+        font-size: 14px;
+    }
+
+    .stats-list,
+    .stats-grid {
+        border: 1px solid #ccc !important;
+        background: #fff !important;
+    }
+
+    .stat-label { color: #555 !important; }
+    .stat-value { color: #111 !important; }
+
+    .cr-summary-grid .stat-value {
+        color: #111 !important;
+    }
+
+    .data-table th { color: #333 !important; border-color: #ccc !important; }
+    .data-table td { color: #111 !important; border-color: #ddd !important; }
+
+    .cr-section-row {
+        background: #f0f0f0 !important;
+        color: #333 !important;
+    }
+
+    .cr-highlight-row {
+        background: #e8f5e9 !important;
+        border-top-color: #2e7d32 !important;
+    }
+
+    .cr-highlight-row td {
+        color: #1b5e20 !important;
+    }
+
+    .stat-card::after {
+        display: none;
+    }
 }

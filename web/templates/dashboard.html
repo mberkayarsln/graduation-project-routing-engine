@@ -22,31 +22,53 @@
         <h2>Route Overview</h2>
     </div>
     <div class="card-body">
-        <div id="overview-map" style="height: 540px; border-radius: 12px;"></div>
+        <div id="overview-map" style="height: 540px; border-radius: 12px;z-index: 1;"></div>
     </div>
 </div>
 
 <!-- Stats Cards -->
-<div class="stats-list">
-    <div class="stat-item"><span class="stat-label">Total Employees</span><span class="stat-value"
-            id="stat-employees">--</span></div>
-    <div class="stat-item"><span class="stat-label">Active Employees</span><span class="stat-value"
-            id="stat-active">--</span></div>
-    <div class="stat-item"><span class="stat-label">Unassigned</span><span class="stat-value"
-            id="stat-unassigned">--</span></div>
-    <div class="stat-item"><span class="stat-label">Efficieny (Assigned / Total Active)</span><span class="stat-value"
-            id="stat-efficiency">--</span></div>
-    <div class="stat-item"><span class="stat-label">Active Routes</span><span class="stat-value"
-            id="stat-routes">--</span></div>
-    <div class="stat-item"><span class="stat-label">Vehicles</span><span class="stat-value" id="stat-vehicles">--</span>
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <span class="stat-label">Total Employees</span>
+        <span class="stat-value" id="stat-employees">--</span>
     </div>
-    <div class="stat-item"><span class="stat-label">Clusters</span><span class="stat-value" id="stat-clusters">--</span>
+    <div class="stat-card">
+        <span class="stat-label">Active Employees</span>
+        <span class="stat-value" id="stat-active">--</span>
     </div>
-    <div class="stat-item"><span class="stat-label">Zones</span><span class="stat-value" id="stat-zones">--</span></div>
-    <div class="stat-item"><span class="stat-label">Total Distance (km)</span><span class="stat-value"
-            id="stat-distance">--</span></div>
-    <div class="stat-item"><span class="stat-label">Total Duration (min)</span><span class="stat-value"
-            id="stat-duration">--</span></div>
+    <div class="stat-card">
+        <span class="stat-label">Unassigned</span>
+        <span class="stat-value" id="stat-unassigned">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Efficiency</span>
+        <span class="stat-value" id="stat-efficiency">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Active Routes</span>
+        <span class="stat-value" id="stat-routes">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Vehicles</span>
+        <span class="stat-value" id="stat-vehicles">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Clusters</span>
+        <span class="stat-value" id="stat-clusters">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Zones</span>
+        <span class="stat-value" id="stat-zones">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Total Distance</span>
+        <span class="stat-value" id="stat-distance">--</span>
+    </div>
+    <div class="stat-card">
+        <span class="stat-label">Total Duration</span>
+        <span class="stat-value" id="stat-duration">--</span>
+    </div>
 </div>
 {% endblock %}
 
@@ -89,7 +111,7 @@
             document.getElementById('stat-duration').textContent = Math.round(data.total_duration_min);
             document.getElementById('stat-efficiency').textContent =
                 data.total_employees > 0 ?
-                    ((data.active_employees - data.unassigned_employees) / data.active_employees  * 100).toFixed(2) + '%' : '--';
+                    ((data.active_employees - data.unassigned_employees) / data.active_employees * 100).toFixed(2) + '%' : '--';
 
             // Also refresh the map
             loadRoutes();

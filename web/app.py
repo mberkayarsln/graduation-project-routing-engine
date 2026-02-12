@@ -586,6 +586,188 @@ def api_stop_names():
 
 
 # =============================================================================
+# REST API - Cost Report
+# =============================================================================
+
+@app.route('/cost-report')
+def cost_report_page():
+    """Cost report page for tender presentations."""
+    return render_template('cost_report.html')
+
+
+@app.route('/api/cost-report')
+def api_cost_report():
+    """Calculate comprehensive cost report including Turkish taxes."""
+    try:
+        from config import Config
+        
+        # Fetch real data from database
+        employees = employee_repo.find_all()
+        clusters = cluster_repo.find_all()
+        vehicles = vehicle_repo.find_all()
+        
+        total_distance = 0.0
+        total_duration = 0.0
+        route_count = 0
+        for cluster in clusters:
+            route = route_repo.find_by_cluster(cluster.id)
+            if route:
+                total_distance += float(route.distance_km)
+                total_duration += float(route.duration_min)
+                route_count += 1
+        
+        active_employees = sum(1 for e in employees if not e.excluded)
+        vehicle_count = len(vehicles) if vehicles else route_count
+        
+        # Override defaults with query parameters
+        def qp(name, default):
+            val = request.args.get(name)
+            return float(val) if val is not None else default
+        
+        # === Cost Parameters (overridable) ===
+        driver_gross_salary   = qp('driver_salary', 35000)       # ₺/month
+        sgk_employer_rate     = qp('sgk_rate', 22.5) / 100       # 22.5%
+        unemployment_rate     = qp('unemployment_rate', 2) / 100  # 2%
+        vehicle_rent          = qp('vehicle_rent', 25000)         # ₺/month per vehicle
+        fuel_price_per_liter  = qp('fuel_price', 43.5)            # ₺/liter
+        fuel_consumption      = qp('fuel_consumption', 15)        # liters/100km
+        maintenance_monthly   = qp('maintenance', 8000)           # ₺/month per vehicle
+        mtv_monthly           = qp('mtv', 1500)                   # ₺/month per vehicle
+        working_days          = qp('working_days', 22)            # days/month
+        trips_per_day         = qp('trips_per_day', 2)            # round-trip (morning+evening)
+        overhead_rate         = qp('overhead_rate', 5) / 100      # 5%
+        profit_rate           = qp('profit_rate', 10) / 100       # 10%
+        kdv_rate              = qp('kdv_rate', 20) / 100          # 20%
+        stamp_tax_rate        = qp('stamp_tax_rate', 0.948) / 100 # 0.948%
+        contract_months       = qp('contract_months', 12)         # months
+        
+        # === Calculations ===
+        
+        # 1. Driver costs (per vehicle, monthly)
+        sgk_cost = driver_gross_salary * sgk_employer_rate
+        unemployment_cost = driver_gross_salary * unemployment_rate
+        driver_total_per_vehicle = driver_gross_salary + sgk_cost + unemployment_cost
+        driver_total = driver_total_per_vehicle * vehicle_count
+        
+        # 2. Vehicle costs (monthly, all vehicles)
+        vehicle_rent_total = vehicle_rent * vehicle_count
+        maintenance_total = maintenance_monthly * vehicle_count
+        mtv_total = mtv_monthly * vehicle_count
+        vehicle_total = vehicle_rent_total + maintenance_total + mtv_total
+        
+        # 3. Fuel costs (monthly, all routes)
+        daily_km = total_distance * trips_per_day
+        monthly_km = daily_km * working_days
+        fuel_liters_monthly = monthly_km * fuel_consumption / 100
+        fuel_total = fuel_liters_monthly * fuel_price_per_liter
+        
+        # 4. Subtotal (before overhead/profit/taxes)
+        subtotal = driver_total + vehicle_total + fuel_total
+        
+        # 5. Overhead
+        overhead_total = subtotal * overhead_rate
+        
+        # 6. Net operational cost
+        net_cost = subtotal + overhead_total
+        
+        # 7. Profit margin
+        profit_total = net_cost * profit_rate
+        
+        # 8. Pre-tax total
+        pre_tax_total = net_cost + profit_total
+        
+        # 9. KDV
+        kdv_total = pre_tax_total * kdv_rate
+        
+        # 10. Grand total (monthly tender price)
+        grand_total_monthly = pre_tax_total + kdv_total
+        
+        # 11. Stamp tax (on contract value)
+        contract_value = grand_total_monthly * contract_months
+        stamp_tax = contract_value * stamp_tax_rate
+        
+        # 12. Final contract value
+        final_contract = contract_value + stamp_tax
+        
+        return jsonify({
+            # System data
+            'system': {
+                'total_employees': len(employees),
+                'active_employees': active_employees,
+                'vehicle_count': vehicle_count,
+                'route_count': route_count,
+                'total_distance_km': round(total_distance, 2),
+                'total_duration_min': round(total_duration, 1),
+                'daily_km': round(daily_km, 2),
+                'monthly_km': round(monthly_km, 2),
+            },
+            # Parameters used
+            'params': {
+                'driver_salary': driver_gross_salary,
+                'sgk_rate': round(sgk_employer_rate * 100, 2),
+                'unemployment_rate': round(unemployment_rate * 100, 2),
+                'vehicle_rent': vehicle_rent,
+                'fuel_price': fuel_price_per_liter,
+                'fuel_consumption': fuel_consumption,
+                'maintenance': maintenance_monthly,
+                'mtv': mtv_monthly,
+                'working_days': working_days,
+                'trips_per_day': trips_per_day,
+                'overhead_rate': round(overhead_rate * 100, 2),
+                'profit_rate': round(profit_rate * 100, 2),
+                'kdv_rate': round(kdv_rate * 100, 2),
+                'stamp_tax_rate': round(stamp_tax_rate * 100, 3),
+                'contract_months': contract_months,
+            },
+            # Cost breakdown (monthly)
+            'breakdown': {
+                'driver': {
+                    'gross_salary': round(driver_gross_salary, 2),
+                    'sgk_per_driver': round(sgk_cost, 2),
+                    'unemployment_per_driver': round(unemployment_cost, 2),
+                    'total_per_driver': round(driver_total_per_vehicle, 2),
+                    'total': round(driver_total, 2),
+                },
+                'vehicle': {
+                    'rent_per_vehicle': round(vehicle_rent, 2),
+                    'rent_total': round(vehicle_rent_total, 2),
+                    'maintenance_per_vehicle': round(maintenance_monthly, 2),
+                    'maintenance_total': round(maintenance_total, 2),
+                    'mtv_per_vehicle': round(mtv_monthly, 2),
+                    'mtv_total': round(mtv_total, 2),
+                    'total': round(vehicle_total, 2),
+                },
+                'fuel': {
+                    'liters_monthly': round(fuel_liters_monthly, 2),
+                    'total': round(fuel_total, 2),
+                },
+                'subtotal': round(subtotal, 2),
+                'overhead': round(overhead_total, 2),
+                'net_cost': round(net_cost, 2),
+                'profit': round(profit_total, 2),
+                'pre_tax_total': round(pre_tax_total, 2),
+                'kdv': round(kdv_total, 2),
+                'grand_total_monthly': round(grand_total_monthly, 2),
+            },
+            # Contract summary
+            'contract': {
+                'months': int(contract_months),
+                'monthly_total': round(grand_total_monthly, 2),
+                'contract_value': round(contract_value, 2),
+                'stamp_tax': round(stamp_tax, 2),
+                'final_total': round(final_contract, 2),
+                'per_employee_monthly': round(grand_total_monthly / active_employees, 2) if active_employees else 0,
+                'per_vehicle_monthly': round(grand_total_monthly / vehicle_count, 2) if vehicle_count else 0,
+                'per_km': round(grand_total_monthly / monthly_km, 2) if monthly_km else 0,
+            }
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
 # Run Server
 # =============================================================================
 
