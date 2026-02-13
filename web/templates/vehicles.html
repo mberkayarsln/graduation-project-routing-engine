@@ -1,13 +1,13 @@
 {% extends "base.html" %}
 
-{% block title %}Araçlar - Rota Motoru{% endblock %}
-{% block page_title %}Araçlar{% endblock %}
+{% block title %}{{ t['veh_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['veh_title'] }}{% endblock %}
 
 {% block header_actions %}
 <div class="search-box">
-    <input type="text" id="vehicle-search" placeholder="Araç ara..." onkeyup="filterVehicles()">
+    <input type="text" id="vehicle-search" placeholder="{{ t['search_veh_ph'] }}" onkeyup="filterVehicles()">
 </div>
-<button class="btn btn-primary" onclick="loadVehicles()">Yenile</button>
+<button class="btn btn-primary" onclick="loadVehicles()">{{ t['btn_refresh'] }}</button>
 {% endblock %}
 
 {% block content %}
@@ -15,16 +15,16 @@
     <table class="data-table" id="vehicles-table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Tür</th>
-                <th>Sürücü</th>
-                <th>Kapasite</th>
-                <th>İşlemler</th>
+                <th>{{ t['tbl_id'] }}</th>
+                <th>{{ t['tbl_type'] }}</th>
+                <th>{{ t['tbl_driver'] }}</th>
+                <th>{{ t['tbl_capacity'] }}</th>
+                <th>{{ t['tbl_actions'] }}</th>
             </tr>
         </thead>
         <tbody id="vehicles-tbody">
             <tr>
-                <td colspan="5" class="loading">Araçlar yükleniyor...</td>
+                <td colspan="5" class="loading">{{ t['msg_loading_veh'] }}</td>
             </tr>
         </tbody>
     </table>
@@ -33,7 +33,7 @@
 <div id="vehicle-modal" class="modal" style="display:none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="vehicle-modal-title">Aracı Düzenle</h3>
+            <h3 id="vehicle-modal-title">{{ t['modal_veh_title'] }}</h3>
             <button class="modal-close" onclick="closeVehicleModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -41,18 +41,19 @@
                 <input type="hidden" id="edit-vehicle-id">
 
                 <div class="form-group">
-                    <label>Sürücü Adı</label>
-                    <input type="text" id="edit-driver-name" placeholder="Sürücü adı giriniz">
+                    <label>{{ t['lbl_driver_name'] }}</label>
+                    <input type="text" id="edit-driver-name" placeholder="{{ t['ph_driver'] }}">
                 </div>
 
                 <div class="form-group">
-                    <label>Kapasite</label>
+                    <label>{{ t['lbl_capacity'] }}</label>
                     <input type="number" id="edit-capacity" min="1" max="50">
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">İptal</button>
-                    <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">{{ t['btn_cancel']
+                        }}</button>
+                    <button type="submit" class="btn btn-primary">{{ t['btn_save'] }}</button>
                 </div>
             </form>
         </div>
@@ -72,7 +73,7 @@
         } catch (err) {
             console.error('Error loading vehicles:', err);
             document.getElementById('vehicles-tbody').innerHTML =
-                '<tr><td colspan="5" class="error">Araçlar yüklenirken hata oluştu</td></tr>';
+                '<tr><td colspan="5" class="error">Error loading vehicles</td></tr>';
         }
     }
 
@@ -80,7 +81,7 @@
         const tbody = document.getElementById('vehicles-tbody');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">Araç bulunamadı</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="empty">{{ t["msg_no_veh"] }}</td></tr>';
             return;
         }
 
@@ -115,7 +116,7 @@
         const vehicle = vehicles.find(v => v.id === id);
         if (!vehicle) return;
 
-        document.getElementById('vehicle-modal-title').textContent = `Araç #${vehicle.id} Düzenle`;
+        document.getElementById('vehicle-modal-title').textContent = `{{ t['modal_veh_title'] }} #${vehicle.id}`;
         document.getElementById('edit-vehicle-id').value = vehicle.id;
         document.getElementById('edit-driver-name').value = vehicle.driver_name || '';
         document.getElementById('edit-capacity').value = vehicle.capacity;

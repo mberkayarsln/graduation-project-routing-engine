@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="tr">
+<html lang="{{ lang }}" data-lang="{{ lang }}">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Rota Motoru{% endblock %}</title>
+    <title>{% block title %}{{ t['app_title'] }}{% endblock %}</title>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -23,42 +23,50 @@
     <aside class="sidebar">
         <div class="sidebar-header">
             <a href="/" class="logo">
-                <span class="logo-text">Routing Engine</span>
+                <span class="logo-text">{{ t['app_title'] }}</span>
             </a>
         </div>
 
         <nav class="sidebar-nav">
             <a href="/" class="nav-item {% if request.endpoint == 'dashboard' %}active{% endif %}">
-                <span class="nav-text">Kontrol Paneli</span>
+                <span class="nav-text">{{ t['nav_dashboard'] }}</span>
             </a>
             <a href="/employees" class="nav-item {% if request.endpoint == 'employees_page' %}active{% endif %}">
-                <span class="nav-text">Personeller</span>
+                <span class="nav-text">{{ t['nav_employees'] }}</span>
             </a>
             <a href="/clusters" class="nav-item {% if request.endpoint == 'clusters_page' %}active{% endif %}">
-                <span class="nav-text">Kümeler</span>
+                <span class="nav-text">{{ t['nav_clusters'] }}</span>
             </a>
             <a href="/routes" class="nav-item {% if request.endpoint == 'routes_page' %}active{% endif %}">
-                <span class="nav-text">Rotalar</span>
+                <span class="nav-text">{{ t['nav_routes'] }}</span>
             </a>
             <a href="/vehicles" class="nav-item {% if request.endpoint == 'vehicles_page' %}active{% endif %}">
-                <span class="nav-text">Araçlar</span>
+                <span class="nav-text">{{ t['nav_vehicles'] }}</span>
             </a>
             <a href="/cost-report" class="nav-item {% if request.endpoint == 'cost_report_page' %}active{% endif %}">
-                <span class="nav-text">Maliyet Raporu</span>
+                <span class="nav-text">{{ t['nav_cost_report'] }}</span>
             </a>
         </nav>
 
         <div class="sidebar-footer">
             <div class="sidebar-status">
                 <span class="status-dot"></span>
-                <span class="status-text">Bağlı</span>
+                <span class="status-text">{{ t['status_connected'] }}</span>
             </div>
+            <div class="lang-switch" style="margin-top:10px;text-align:center;font-size:12px;">
+                <a href="/set-lang/tr"
+                    style="color:{% if lang=='tr' %}#3b82f6{% else %}#666{% endif %};text-decoration:none;font-weight:600;">TR</a>
+                <span style="color:#444;">|</span>
+                <a href="/set-lang/en"
+                    style="color:{% if lang=='en' %}#3b82f6{% else %}#666{% endif %};text-decoration:none;font-weight:600;">EN</a>
+            </div>
+        </div>
         </div>
     </aside>
 
     <main class="main-content">
         <header class="page-header">
-            <h1 class="page-title">{% block page_title %}Kontrol Paneli{% endblock %}</h1>
+            <h1 class="page-title">{% block page_title %}{{ t['dashboard_title'] }}{% endblock %}</h1>
             <div class="header-actions">
                 {% block header_actions %}{% endblock %}
             </div>

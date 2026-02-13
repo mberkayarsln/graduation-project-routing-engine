@@ -1,24 +1,24 @@
 {% extends "base.html" %}
 
-{% block title %}Kontrol Paneli - Rota Motoru{% endblock %}
-{% block page_title %}Kontrol Paneli{% endblock %}
+{% block title %}{{ t['dashboard_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['dashboard_title'] }}{% endblock %}
 
 {% block header_actions %}
 <div style="display:flex;align-items:center;gap:10px;">
     <select id="optimization-mode">
-        <option value="budget">Bütçe Dostu (daha az araç)</option>
-        <option value="balanced" selected>Dengeli</option>
-        <option value="employee">Personel Dostu (daha kısa yürüme)</option>
+        <option value="budget">{{ t['opt_budget'] }}</option>
+        <option value="balanced" selected>{{ t['opt_balanced'] }}</option>
+        <option value="employee">{{ t['opt_employee'] }}</option>
     </select>
-    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">Rotaları Oluştur</button>
-    <button class="btn btn-primary" onclick="refreshStats()">Yenile</button>
+    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">{{ t['btn_generate'] }}</button>
+    <button class="btn btn-primary" onclick="refreshStats()">{{ t['btn_refresh'] }}</button>
 </div>
 {% endblock %}
 
 {% block content %}
 <div class="card">
     <div class="card-header">
-        <h2>Rota Genel Görünümü</h2>
+        <h2>{{ t['card_overview'] }}</h2>
     </div>
     <div class="card-body">
         <div id="overview-map" style="height: 540px; border-radius: 12px;z-index: 1;"></div>
@@ -27,11 +27,11 @@
 
 <div class="stats-grid">
     <div class="stat-card">
-        <span class="stat-label">Toplam Personel</span>
+        <span class="stat-label">{{ t['stat_employees'] }}</span>
         <span class="stat-value" id="stat-employees">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Aktif Personel</span>
+        <span class="stat-label">{{ t['stat_active_emp'] }}</span>
         <span class="stat-value" id="stat-active">--</span>
     </div>
     <div class="stat-card">
@@ -43,27 +43,27 @@
         <span class="stat-value" id="stat-efficiency">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Aktif Rotalar</span>
+        <span class="stat-label">{{ t['stat_routes'] }}</span>
         <span class="stat-value" id="stat-routes">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Araçlar</span>
+        <span class="stat-label">{{ t['stat_vehicles'] }}</span>
         <span class="stat-value" id="stat-vehicles">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Kümeler</span>
+        <span class="stat-label">{{ t['nav_clusters'] }}</span>
         <span class="stat-value" id="stat-clusters">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Bölgeler</span>
+        <span class="stat-label">{{ t['tbl_zone'] }}</span>
         <span class="stat-value" id="stat-zones">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Toplam Mesafe</span>
+        <span class="stat-label">{{ t['stat_distance'] }}</span>
         <span class="stat-value" id="stat-distance">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Toplam Süre</span>
+        <span class="stat-label">{{ t['stat_duration'] }}</span>
         <span class="stat-value" id="stat-duration">--</span>
     </div>
 </div>
@@ -86,7 +86,7 @@
         iconSize: [20, 20], iconAnchor: [10, 10]
     });
     L.marker([40.837384, 29.412109], { icon: officeIcon }).addTo(map)
-        .bindPopup('<b>Ofis</b>');
+        .bindPopup('<b>{{ t["office"] }}</b>');
 
     async function refreshStats() {
         try {
@@ -141,7 +141,7 @@
                         iconSize: [20, 20]
                     });
                     L.marker([route.center[0], route.center[1]], { icon: clusterIcon }).addTo(routeLayer)
-                        .bindPopup(`<b>Rota ${i + 1}</b><br>Mesafe: ${route.distance_km} km<br>Süre: ${Math.round(route.duration_min)} dk`);
+                        .bindPopup(`<b>Rota ${i + 1}</b><br>{{ t['dtl_distance'] }}: ${route.distance_km} {{ t['unit_km'] }}<br>{{ t['dtl_duration'] }}: ${Math.round(route.duration_min)} {{ t['unit_min'] }}`);
                 }
             });
         } catch (err) {
@@ -168,7 +168,7 @@
         const mode = document.getElementById('optimization-mode').value;
 
         try {
-            btn.textContent = 'Oluşturuluyor...';
+            btn.textContent = '{{ t["msg_generating"] }}';
             btn.disabled = true;
 
             const res = await fetch('/api/generate-routes', {
@@ -181,13 +181,13 @@
             if (data.success) {
                 await refreshStats();
                 await loadRoutes();
-                alert('Rotalar başarıyla oluşturuldu!');
+                alert('{{ t["msg_gen_success"] }}');
             } else {
-                alert('Hata: ' + (data.error || 'Bilinmeyen hata'));
+                alert('Error: ' + (data.error || 'Unknown error'));
             }
         } catch (err) {
             console.error('Error generating routes:', err);
-            alert('Rota oluşturulurken hata oluştu');
+            alert('{{ t["msg_gen_error"] }}');
         } finally {
             btn.textContent = originalText;
             btn.disabled = false;

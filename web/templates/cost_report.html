@@ -1,12 +1,12 @@
 {% extends "base.html" %}
 
-{% block title %}Maliyet Raporu - Rota Motoru{% endblock %}
-{% block page_title %}Maliyet Raporu{% endblock %}
+{% block title %}{{ t['rpt_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['rpt_title'] }}{% endblock %}
 
 {% block header_actions %}
 <div style="display:flex;align-items:center;gap:10px;">
-    <button class="btn btn-primary" onclick="calculateReport()" id="calc-btn">Hesapla</button>
-    <button class="btn btn-success" onclick="window.print()">PDF İndir</button>
+    <button class="btn btn-primary" onclick="calculateReport()" id="calc-btn">{{ t['btn_calculate'] }}</button>
+    <button class="btn btn-success" onclick="window.print()">{{ t['btn_download_pdf'] }}</button>
 </div>
 {% endblock %}
 
@@ -14,61 +14,63 @@
 
 <!-- Print Header (hidden on screen, shown on print) -->
 <div class="print-header">
-    <h1>Personel Servis Hizmeti — Maliyet Raporu</h1>
+    <h1>{{ t['rpt_header'] }}</h1>
     <p class="print-date"></p>
 </div>
 
 <!-- System Stats Bar -->
 <div class="stats-list" id="system-stats">
-    <div class="stat-item"><span class="stat-label">Aktif Personel</span><span class="stat-value"
+    <div class="stat-item"><span class="stat-label">{{ t['lbl_st_active_emp'] }}</span><span class="stat-value"
             id="sys-employees">--</span></div>
-    <div class="stat-item"><span class="stat-label">Araç Sayısı</span><span class="stat-value"
+    <div class="stat-item"><span class="stat-label">{{ t['lbl_st_vehicles'] }}</span><span class="stat-value"
             id="sys-vehicles">--</span></div>
-    <div class="stat-item"><span class="stat-label">Rota Sayısı</span><span class="stat-value" id="sys-routes">--</span>
+    <div class="stat-item"><span class="stat-label">{{ t['lbl_st_routes'] }}</span><span class="stat-value"
+            id="sys-routes">--</span>
     </div>
-    <div class="stat-item"><span class="stat-label">Günlük Toplam KM</span><span class="stat-value"
+    <div class="stat-item"><span class="stat-label">{{ t['lbl_st_daily_km'] }}</span><span class="stat-value"
             id="sys-daily-km">--</span></div>
-    <div class="stat-item"><span class="stat-label">Aylık Toplam KM</span><span class="stat-value"
+    <div class="stat-item"><span class="stat-label">{{ t['lbl_st_monthly_km'] }}</span><span class="stat-value"
             id="sys-monthly-km">--</span></div>
 </div>
 
 <!-- Editable Parameters -->
 <div class="card cr-params-card">
     <div class="card-header">
-        <h2>Maliyet Parametreleri</h2>
+        <h2>{{ t['card_params'] }}</h2>
         <span style="font-size:12px;color:var(--text-muted);">Değerleri düzenleyip "Hesapla" butonuna basın</span>
     </div>
     <div class="card-body">
         <div class="cr-params-grid">
             <div class="cr-param-group">
-                <h3 class="cr-param-title">Personel Giderleri</h3>
-                <label>Şoför Brüt Maaş (₺/ay)<input type="number" id="p-driver-salary" value="35000"></label>
-                <label>SGK İşveren Payı (%)<input type="number" id="p-sgk-rate" value="22.5" step="0.1"></label>
-                <label>İşsizlik Sigortası (%)<input type="number" id="p-unemployment" value="2" step="0.1"></label>
+                <h3 class="cr-param-title">{{ t['sect_personnel'] }}</h3>
+                <label>{{ t['lbl_driver_salary'] }}<input type="number" id="p-driver-salary" value="35000"></label>
+                <label>{{ t['lbl_sgk'] }}<input type="number" id="p-sgk-rate" value="22.5" step="0.1"></label>
+                <label>{{ t['lbl_unemployment'] }}<input type="number" id="p-unemployment" value="2" step="0.1"></label>
             </div>
             <div class="cr-param-group">
-                <h3 class="cr-param-title">Araç Giderleri</h3>
-                <label>Araç Kirası (₺/ay/araç)<input type="number" id="p-vehicle-rent" value="25000"></label>
-                <label>Bakım + Sigorta (₺/ay/araç)<input type="number" id="p-maintenance" value="8000"></label>
-                <label>MTV (₺/ay/araç)<input type="number" id="p-mtv" value="1500"></label>
+                <h3 class="cr-param-title">{{ t['sect_vehicle'] }}</h3>
+                <label>{{ t['lbl_vehicle_rent'] }}<input type="number" id="p-vehicle-rent" value="25000"></label>
+                <label>{{ t['lbl_maintenance'] }}<input type="number" id="p-maintenance" value="8000"></label>
+                <label>{{ t['lbl_mtv'] }}<input type="number" id="p-mtv" value="1500"></label>
             </div>
             <div class="cr-param-group">
-                <h3 class="cr-param-title">Yakıt</h3>
-                <label>Yakıt Fiyatı (₺/lt)<input type="number" id="p-fuel-price" value="43.5" step="0.1"></label>
-                <label>Tüketim (lt/100km)<input type="number" id="p-fuel-consumption" value="15" step="0.1"></label>
+                <h3 class="cr-param-title">{{ t['sect_fuel'] }}</h3>
+                <label>{{ t['lbl_fuel_price'] }}<input type="number" id="p-fuel-price" value="43.5" step="0.1"></label>
+                <label>{{ t['lbl_fuel_consumption'] }}<input type="number" id="p-fuel-consumption" value="15"
+                        step="0.1"></label>
             </div>
             <div class="cr-param-group">
-                <h3 class="cr-param-title">Operasyon</h3>
-                <label>Aylık İş Günü<input type="number" id="p-working-days" value="22"></label>
-                <label>Günlük Sefer (gidiş-dönüş)<input type="number" id="p-trips" value="2"></label>
-                <label>Sözleşme Süresi (ay)<input type="number" id="p-contract-months" value="12"></label>
+                <h3 class="cr-param-title">{{ t['sect_operation'] }}</h3>
+                <label>{{ t['lbl_working_days'] }}<input type="number" id="p-working-days" value="22"></label>
+                <label>{{ t['lbl_trips'] }}<input type="number" id="p-trips" value="2"></label>
+                <label>{{ t['lbl_contract_months'] }}<input type="number" id="p-contract-months" value="12"></label>
             </div>
             <div class="cr-param-group">
-                <h3 class="cr-param-title">Vergi & Kâr</h3>
-                <label>Genel Gider (%)<input type="number" id="p-overhead" value="5" step="0.1"></label>
-                <label>Kâr Marjı (%)<input type="number" id="p-profit" value="10" step="0.1"></label>
-                <label>KDV (%)<input type="number" id="p-kdv" value="20" step="0.1"></label>
-                <label>Damga Vergisi (%)<input type="number" id="p-stamp" value="0.948" step="0.001"></label>
+                <h3 class="cr-param-title">{{ t['sect_tax_profit'] }}</h3>
+                <label>{{ t['lbl_overhead'] }}<input type="number" id="p-overhead" value="5" step="0.1"></label>
+                <label>{{ t['lbl_profit'] }}<input type="number" id="p-profit" value="10" step="0.1"></label>
+                <label>{{ t['lbl_kdv'] }}<input type="number" id="p-kdv" value="20" step="0.1"></label>
+                <label>{{ t['lbl_stamp'] }}<input type="number" id="p-stamp" value="0.948" step="0.001"></label>
             </div>
         </div>
     </div>
@@ -77,23 +79,23 @@
 <!-- Summary Cards -->
 <div class="stats-grid cr-summary-grid" id="summary-cards">
     <div class="stat-card">
-        <span class="stat-label">Aylık Toplam (KDV Dahil)</span>
+        <span class="stat-label">{{ t['row_grand_total'] }}</span>
         <span class="stat-value" id="sum-monthly">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Personel Başı Aylık</span>
+        <span class="stat-label">{{ t['row_cost_per_emp'] }}</span>
         <span class="stat-value" id="sum-per-emp">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Araç Başı Aylık</span>
+        <span class="stat-label">{{ t['row_cost_per_veh'] }}</span>
         <span class="stat-value" id="sum-per-vehicle">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">KM Başı Maliyet</span>
+        <span class="stat-label">{{ t['row_cost_per_km'] }}</span>
         <span class="stat-value" id="sum-per-km">--</span>
     </div>
     <div class="stat-card">
-        <span class="stat-label">Sözleşme Toplam</span>
+        <span class="stat-label">{{ t['row_contract_val'] }}</span>
         <span class="stat-value" id="sum-contract">--</span>
     </div>
 </div>
@@ -101,17 +103,17 @@
 <!-- Detailed Breakdown Table -->
 <div class="card">
     <div class="card-header">
-        <h2>Maliyet Kalemleri Detayı (Aylık)</h2>
+        <h2>{{ t['card_breakdown'] }}</h2>
     </div>
     <div class="card-body">
         <div class="table-container">
             <table class="data-table cr-table" id="breakdown-table">
                 <thead>
                     <tr>
-                        <th style="width:40%">Kalem</th>
-                        <th style="width:20%">Birim Tutar</th>
-                        <th style="width:15%">Adet</th>
-                        <th style="width:25%;text-align:right">Toplam (₺)</th>
+                        <th style="width:40%">{{ t['tbl_item'] }}</th>
+                        <th style="width:20%">{{ t['tbl_unit_price'] }}</th>
+                        <th style="width:15%">{{ t['tbl_qty'] }}</th>
+                        <th style="width:25%;text-align:right">{{ t['tbl_total'] }} (₺)</th>
                     </tr>
                 </thead>
                 <tbody id="breakdown-body">
@@ -125,7 +127,7 @@
 <!-- Contract Summary -->
 <div class="card">
     <div class="card-header">
-        <h2>İhale Teklif Özeti</h2>
+        <h2>{{ t['card_contract'] }}</h2>
     </div>
     <div class="card-body">
         <div class="table-container">
@@ -153,7 +155,7 @@
 
     async function calculateReport() {
         const btn = document.getElementById('calc-btn');
-        btn.textContent = 'Hesaplanıyor...';
+        btn.textContent = '{{ t["lbl_calculating"] }}';
         btn.disabled = true;
 
         try {
@@ -183,9 +185,9 @@
             renderReport(data);
         } catch (err) {
             console.error(err);
-            alert('Rapor hesaplanırken hata oluştu.');
+            alert('{{ t["msg_calc_error"] }}');
         } finally {
-            btn.textContent = 'Hesapla';
+            btn.textContent = '{{ t["btn_calculate"] }}';
             btn.disabled = false;
         }
     }
@@ -215,29 +217,29 @@
         tbody.innerHTML = '';
 
         const rows = [
-            { section: 'PERSONEL GİDERLERİ' },
-            { label: 'Şoför Brüt Maaş', unit: fmt(bd.driver.gross_salary), qty: vc, total: bd.driver.gross_salary * vc },
-            { label: 'SGK İşveren Payı', unit: fmt(bd.driver.sgk_per_driver), qty: vc, total: bd.driver.sgk_per_driver * vc },
-            { label: 'İşsizlik Sigortası', unit: fmt(bd.driver.unemployment_per_driver), qty: vc, total: bd.driver.unemployment_per_driver * vc },
-            { label: 'Personel Giderleri Toplam', total: bd.driver.total, bold: true },
+            { section: '{{ t["sect_personnel"] }}' },
+            { label: '{{ t["lbl_driver_salary"] }}', unit: fmt(bd.driver.gross_salary), qty: vc, total: bd.driver.gross_salary * vc },
+            { label: '{{ t["lbl_sgk"] }}', unit: fmt(bd.driver.sgk_per_driver), qty: vc, total: bd.driver.sgk_per_driver * vc },
+            { label: '{{ t["lbl_unemployment"] }}', unit: fmt(bd.driver.unemployment_per_driver), qty: vc, total: bd.driver.unemployment_per_driver * vc },
+            { label: '{{ t["row_personnel_total"] }}', total: bd.driver.total, bold: true },
 
-            { section: 'ARAÇ GİDERLERİ' },
-            { label: 'Araç Kiralama / Amortisman', unit: fmt(bd.vehicle.rent_per_vehicle), qty: vc, total: bd.vehicle.rent_total },
-            { label: 'Bakım + Sigorta (Kasko + Trafik)', unit: fmt(bd.vehicle.maintenance_per_vehicle), qty: vc, total: bd.vehicle.maintenance_total },
-            { label: 'MTV (Motorlu Taşıt Vergisi)', unit: fmt(bd.vehicle.mtv_per_vehicle), qty: vc, total: bd.vehicle.mtv_total },
-            { label: 'Araç Giderleri Toplam', total: bd.vehicle.total, bold: true },
+            { section: '{{ t["sect_vehicle"] }}' },
+            { label: '{{ t["lbl_vehicle_rent"] }}', unit: fmt(bd.vehicle.rent_per_vehicle), qty: vc, total: bd.vehicle.rent_total },
+            { label: '{{ t["lbl_maintenance"] }}', unit: fmt(bd.vehicle.maintenance_per_vehicle), qty: vc, total: bd.vehicle.maintenance_total },
+            { label: '{{ t["lbl_mtv"] }}', unit: fmt(bd.vehicle.mtv_per_vehicle), qty: vc, total: bd.vehicle.mtv_total },
+            { label: '{{ t["row_vehicle_total"] }}', total: bd.vehicle.total, bold: true },
 
-            { section: 'YAKIT GİDERLERİ' },
-            { label: 'Aylık Yakıt Tüketimi', unit: fmt(bd.fuel.liters_monthly) + ' lt', qty: '', total: bd.fuel.total },
+            { section: '{{ t["sect_fuel"] }}' },
+            { label: '{{ t["row_fuel_monthly"] }}', unit: fmt(bd.fuel.liters_monthly) + ' lt', qty: '', total: bd.fuel.total },
 
-            { section: 'TOPLAM & VERGİLER' },
-            { label: 'Operasyonel Ara Toplam', total: bd.subtotal, bold: true },
-            { label: 'Genel Giderler (%' + data.params.overhead_rate + ')', total: bd.overhead },
-            { label: 'Net Maliyet', total: bd.net_cost, bold: true },
-            { label: 'Kâr Marjı (%' + data.params.profit_rate + ')', total: bd.profit },
-            { label: 'Vergi Öncesi Toplam', total: bd.pre_tax_total, bold: true },
-            { label: 'KDV (%' + data.params.kdv_rate + ')', total: bd.kdv },
-            { label: 'AYLIK GENEL TOPLAM (KDV DAHİL)', total: bd.grand_total_monthly, highlight: true },
+            { section: '{{ t["sect_total_tax"] }}' },
+            { label: '{{ t["row_subtotal"] }}', total: bd.subtotal, bold: true },
+            { label: '{{ t["lbl_overhead"] }} (%' + data.params.overhead_rate + ')', total: bd.overhead },
+            { label: '{{ t["row_net_cost"] }}', total: bd.net_cost, bold: true },
+            { label: '{{ t["lbl_profit"] }} (%' + data.params.profit_rate + ')', total: bd.profit },
+            { label: '{{ t["row_pre_tax"] }}', total: bd.pre_tax_total, bold: true },
+            { label: '{{ t["lbl_kdv"] }} (%' + data.params.kdv_rate + ')', total: bd.kdv },
+            { label: '{{ t["row_grand_total"] }}', total: bd.grand_total_monthly, highlight: true },
         ];
 
         rows.forEach(r => {
@@ -264,15 +266,15 @@
         ctbody.innerHTML = '';
 
         const contractRows = [
-            { label: 'Aylık Teklif Bedeli (KDV Dahil)', value: ct.monthly_total },
-            { label: `Sözleşme Süresi`, value: ct.months + ' ay', raw: true },
-            { label: 'Sözleşme Bedeli (KDV Dahil)', value: ct.contract_value },
-            { label: `Damga Vergisi (%${data.params.stamp_tax_rate})`, value: ct.stamp_tax },
-            { label: 'İHALE TEKLİF FİYATI (Toplam)', value: ct.final_total, highlight: true },
+            { label: '{{ t["row_offer_monthly"] }}', value: ct.monthly_total },
+            { label: `{{ t["lbl_contract_months"] }}`, value: ct.months + ' {{ t["unit_months"] }}', raw: true },
+            { label: '{{ t["row_contract_val"] }}', value: ct.contract_value },
+            { label: `{{ t["lbl_stamp"] }} (%${data.params.stamp_tax_rate})`, value: ct.stamp_tax },
+            { label: '{{ t["row_offer_total"] }}', value: ct.final_total, highlight: true },
             { sep: true },
-            { label: 'Personel Başı Aylık Maliyet', value: ct.per_employee_monthly },
-            { label: 'Araç Başı Aylık Maliyet', value: ct.per_vehicle_monthly },
-            { label: 'Kilometre Başı Maliyet', value: ct.per_km },
+            { label: '{{ t["row_cost_per_emp"] }}', value: ct.per_employee_monthly },
+            { label: '{{ t["row_cost_per_veh"] }}', value: ct.per_vehicle_monthly },
+            { label: '{{ t["row_cost_per_km"] }}', value: ct.per_km },
         ];
 
         contractRows.forEach(r => {
@@ -290,7 +292,7 @@
 
         // Update print date
         document.querySelector('.print-date').textContent =
-            'Rapor Tarihi: ' + new Date().toLocaleDateString('tr-TR', { year: 'numeric', month: 'long', day: 'numeric' });
+            '{{ t["rpt_date"] }}: ' + new Date().toLocaleDateString('{{ lang }}-{{ lang|upper }}', { year: 'numeric', month: 'long', day: 'numeric' });
     }
 
     // Auto-load on page open

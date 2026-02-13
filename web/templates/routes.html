@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Rotalar - Rota Motoru{% endblock %}
-{% block page_title %}Rotalar{% endblock %}
+{% block title %}{{ t['rte_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['rte_title'] }}{% endblock %}
 
 {% block head %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -261,12 +261,12 @@
     <div class="routes-sidebar">
         <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
             <div class="card-header">
-                <h2>Tüm Rotalar</h2>
+                <h2>{{ t['sidebar_all_rte'] }}</h2>
                 <span class="badge" id="route-count">0</span>
             </div>
             <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
                 <div id="routes-container">
-                    <div class="loading" style="padding:20px;">Rotalar yükleniyor...</div>
+                    <div class="loading" style="padding:20px;">{{ t['msg_loading_rte'] }}</div>
                 </div>
             </div>
         </div>
@@ -275,7 +275,7 @@
     <!-- Map -->
     <div class="card route-map-container">
         <div class="card-header">
-            <h2 id="map-title">Bir Rota Seçin</h2>
+            <h2 id="map-title">{{ t['map_select_rte'] }}</h2>
         </div>
         <div id="route-map"></div>
     </div>
@@ -316,7 +316,7 @@
 
         L.marker(officeLocation, {
             icon: L.divIcon({ className: 'office-icon', html: '<div style="background:#6366f1;width:12px;height:12px;border-radius:50%;border:2px solid #fff;"></div>', iconSize: [12, 12] })
-        }).addTo(routeMap).bindPopup('<b>Ofis</b>');
+        }).addTo(routeMap).bindPopup('<b>{{ t["office"] }}</b>');
     }
 
     async function loadRoutes() {
@@ -328,7 +328,7 @@
             renderAllRoutesOnMap();
         } catch (err) {
             console.error('Error loading routes:', err);
-            document.getElementById('routes-container').innerHTML = '<div class="error" style="padding:20px;">Rotalar yüklenirken hata oluştu</div>';
+            document.getElementById('routes-container').innerHTML = '<div class="error" style="padding:20px;">{{ t["msg_no_rte"] }}</div>';
         }
     }
 
@@ -336,7 +336,7 @@
         const container = document.getElementById('routes-container');
 
         if (routes.length === 0) {
-            container.innerHTML = '<div class="empty" style="padding:20px;">Rota bulunamadı</div>';
+            container.innerHTML = '<div class="empty" style="padding:20px;">{{ t["msg_no_rte"] }}</div>';
             return;
         }
 
@@ -344,45 +344,45 @@
             <div class="route-item" data-index="${i}">
                 <div class="route-color" style="background:${colors[i % colors.length]};width:10px;height:10px;border-radius:50%;"></div>
                 <div class="route-info" style="flex:1;display:flex;flex-direction:column;justify-content:center;" onclick="selectRoute(${i})">
-                    <span class="route-name" style="font-weight:600;">Rota ${i + 1}</span>
-                    <span class="route-meta" style="font-size:12px;color:var(--text-muted);">${r.distance_km} km <span style="color:var(--border-light); margin:0 4px;">|</span> ${Math.round(r.duration_min)} dk <span style="color:var(--border-light); margin:0 4px;">|</span> ${r.employee_count} personel</span>
+                    <span class="route-name" style="font-weight:600;">{{ t['route_name_fmt'].format('${i + 1}') }}</span>
+                    <span class="route-meta" style="font-size:12px;color:var(--text-muted);">${r.distance_km} {{ t['unit_km'] }} <span style="color:var(--border-light); margin:0 4px;">|</span> ${Math.round(r.duration_min)} {{ t['unit_min'] }} <span style="color:var(--border-light); margin:0 4px;">|</span> ${r.employee_count} {{ t['lbl_employees'] }}</span>
                 </div>
                 <div class="route-actions">
-                    <button class="btn btn-sm btn-secondary" onclick="showRouteDetails(${i})">Detaylar</button>
+                    <button class="btn btn-sm btn-secondary" onclick="showRouteDetails(${i})">{{ t['btn_details'] }}</button>
                 </div>
             </div>
             <div id="details-${i}" class="details-content" style="display:none;">
                 <div class="info-grid">
                     <div class="info-item">
-                        <span class="info-label">Mesafe</span>
-                        <span class="info-value">${r.distance_km} km</span>
+                        <span class="info-label">{{ t['dtl_distance'] }}</span>
+                        <span class="info-value">${r.distance_km} {{ t['unit_km'] }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Süre</span>
-                        <span class="info-value">${Math.round(r.duration_min)} dk</span>
+                        <span class="info-label">{{ t['dtl_duration'] }}</span>
+                        <span class="info-value">${Math.round(r.duration_min)} {{ t['unit_min'] }}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Duraklar</span>
+                        <span class="info-label">{{ t['dtl_stops'] }}</span>
                         <span class="info-value">${r.stop_count}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Otobüs Durakları</span>
+                        <span class="info-label">{{ t['dtl_bus_stops'] }}</span>
                         <span class="info-value">${r.bus_stop_count || 0}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Personeller</span>
+                        <span class="info-label">{{ t['dtl_employees'] }}</span>
                         <span class="info-value">${r.employee_count}</span>
                     </div>
                 </div>
                 <div>
-                    <span class="info-label">Personeller</span>
-                    <div id="employees-${i}" class="employee-chips" style="margin-top:6px;">Yükleniyor...</div>
+                    <span class="info-label">{{ t['dtl_employees'] }}</span>
+                    <div id="employees-${i}" class="employee-chips" style="margin-top:6px;">{{ t['loading'] }}</div>
                 </div>
                 <div class="edit-actions">
-                    <button class="btn btn-sm btn-primary" onclick="enableEditMode(${i})">Rotayı Düzenle</button>
-                    <button class="btn btn-sm btn-secondary" onclick="closeDetails(${i})">Kapat</button>
+                    <button class="btn btn-sm btn-primary" onclick="enableEditMode(${i})">{{ t['btn_edit_route'] }}</button>
+                    <button class="btn btn-sm btn-secondary" onclick="closeDetails(${i})">{{ t['btn_close'] }}</button>
                 </div>
-                <p class="help-text">Ara noktaları sürükleyerek rotayı değiştirmek için "Rotayı Düzenle"ye tıklayın.</p>
+                <p class="help-text">{{ t['help_drag'] }}</p>
             </div>
         `).join('');
     }
@@ -424,7 +424,7 @@
         // Update UI
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
         document.querySelector(`.route-item[data-index="${index}"]`)?.classList.add('selected');
-        document.getElementById('map-title').textContent = `Rota ${index + 1}`;
+        document.getElementById('map-title').textContent = '{{ t["route_name_fmt"] }}'.replace('{}', index + 1);
 
         // Reset all background polylines first
         backgroundPolylines.forEach(p => p.setStyle({ weight: 3, opacity: 0.6 }));
@@ -694,7 +694,7 @@
 
         // Remove selection styling
         document.querySelectorAll('.route-item').forEach(el => el.classList.remove('selected'));
-        document.getElementById('map-title').textContent = 'Tüm Rotalar';
+        document.getElementById('map-title').textContent = '{{ t["sidebar_all_rte"] }}';
 
         // Clear focused route layer and show all routes
         if (currentLayer) {
@@ -773,9 +773,9 @@
         // Update details panel with edit buttons
         const detailsEl = document.getElementById(`details-${index}`);
         detailsEl.querySelector('.edit-actions').innerHTML = `
-            <button class="btn btn-sm btn-success" onclick="saveRouteChanges(${index})">Değişiklikleri Kaydet</button>
-            <button class="btn btn-sm btn-secondary" onclick="resetRouteEdit(${index})">Sıfırla</button>
-            <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${index})">İptal</button>
+            <button class="btn btn-sm btn-success" onclick="saveRouteChanges(${index})">{{ t['btn_save'] }}</button>
+            <button class="btn btn-sm btn-secondary" onclick="resetRouteEdit(${index})">{{ t['btn_reset'] }}</button>
+            <button class="btn btn-sm btn-secondary" onclick="cancelEdit(${index})">{{ t['btn_cancel'] }}</button>
         `;
 
         showToast('Düzenleme modu açıldı — ara noktaları sürükleyerek rotayı değiştirin', 'info');

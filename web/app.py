@@ -14,7 +14,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, make_response, redirect
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -24,6 +24,7 @@ from db.repositories import (
     ZoneRepository, EmployeeRepository, ClusterRepository,
     RouteRepository, VehicleRepository
 )
+from translations import get_translations
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
@@ -47,6 +48,26 @@ def _get_transit_stops_cached() -> list[tuple[float, float]]:
         data_gen = DataGenerator()
         _transit_stops_cache = data_gen.get_transit_stops()
     return _transit_stops_cache
+
+
+@app.context_processor
+def inject_translations():
+    """Inject translations and language code into all templates."""
+    lang = request.cookies.get('lang', 'tr')
+    return dict(t=get_translations(lang), lang=lang)
+
+
+@app.route('/set-lang/<lang_code>')
+def set_language(lang_code):
+    """Set the language cookie and redirect back."""
+    if lang_code not in ['en', 'tr']:
+        lang_code = 'tr'
+    
+    # Redirect back to the page the user came from, or dashboard
+    referrer = request.headers.get('Referer', '/')
+    resp = make_response(redirect(referrer))
+    resp.set_cookie('lang', lang_code, max_age=60*60*24*365)  # 1 year
+    return resp
 
 
 # =============================================================================

@@ -1,31 +1,31 @@
 {% extends "base.html" %}
 
-{% block title %}Personeller - Rota Motoru{% endblock %}
-{% block page_title %}Personeller{% endblock %}
+{% block title %}{{ t['emp_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['emp_title'] }}{% endblock %}
 
 {% block header_actions %}
 <div class="search-box">
-    <input type="text" id="employee-search" placeholder="Personel ara..." onkeyup="filterEmployees()">
+    <input type="text" id="employee-search" placeholder="{{ t['search_placeholder'] }}" onkeyup="filterEmployees()">
 </div>
 <select id="filter-status" onchange="filterEmployees()">
-    <option value="all">Tüm Durumlar</option>
-    <option value="active">Sadece Aktif</option>
-    <option value="excluded">Sadece Hariç Tutulan</option>
+    <option value="all">{{ t['filter_all'] }}</option>
+    <option value="active">{{ t['filter_active'] }}</option>
+    <option value="excluded">{{ t['filter_excluded'] }}</option>
 </select>
 {% endblock %}
 
 {% block content %}
 <div class="card" id="employee-map-card" style="margin-bottom: 20px;">
     <div class="card-header">
-        <h2>Personel Konumları</h2>
+        <h2>{{ t['map_emp_title'] }}</h2>
         <div style="display:flex;gap:10px;align-items:center;">
             <span id="selection-count" style="color:var(--text-muted);font-size:13px;"></span>
             <button class="btn btn-secondary btn-sm" onclick="clearSelection()" id="clear-selection-btn"
-                style="display:none;">Temizle</button>
-            <button class="btn btn-danger btn-sm" onclick="excludeSelected()" id="exclude-btn"
-                style="display:none;">Seçilenleri Hariç Tut</button>
-            <button class="btn btn-success btn-sm" onclick="includeSelected()" id="include-btn"
-                style="display:none;">Seçilenleri Dahil Et</button>
+                style="display:none;">{{ t['btn_clear'] }}</button>
+            <button class="btn btn-danger btn-sm" onclick="excludeSelected()" id="exclude-btn" style="display:none;">{{
+                t['btn_exclude_sel'] }}</button>
+            <button class="btn btn-success btn-sm" onclick="includeSelected()" id="include-btn" style="display:none;">{{
+                t['btn_include_sel'] }}</button>
         </div>
     </div>
     <div class="card-body">
@@ -37,19 +37,19 @@
     <table class="data-table" id="employees-table">
         <thead>
             <tr>
-                <th>ID</th>
-                <th>Ad Soyad</th>
-                <th>Konum</th>
-                <th>Bölge</th>
-                <th>Küme</th>
+                <th>{{ t['tbl_id'] }}</th>
+                <th>{{ t['tbl_name'] }}</th>
+                <th>{{ t['tbl_location'] }}</th>
+                <th>{{ t['tbl_zone'] }}</th>
+                <th>{{ t['tbl_cluster'] }}</th>
 
-                <th>Durum</th>
-                <th>İşlemler</th>
+                <th>{{ t['tbl_status'] }}</th>
+                <th>{{ t['tbl_actions'] }}</th>
             </tr>
         </thead>
         <tbody id="employees-tbody">
             <tr>
-                <td colspan="7" class="loading">Personeller yükleniyor...</td>
+                <td colspan="7" class="loading">{{ t['msg_loading_emp'] }}</td>
             </tr>
         </tbody>
     </table>
@@ -58,7 +58,7 @@
 <div id="employee-modal" class="modal" style="display:none;">
     <div class="modal-content">
         <div class="modal-header">
-            <h3 id="modal-title">Personel Detayları</h3>
+            <h3 id="modal-title">{{ t['modal_emp_title'] }}</h3>
             <button class="modal-close" onclick="closeModal()">&times;</button>
         </div>
         <div class="modal-body">
@@ -68,24 +68,25 @@
                 <input type="hidden" id="edit-employee-id">
 
                 <div class="form-group">
-                    <label>Durum</label>
+                    <label>{{ t['lbl_status'] }}</label>
                     <div class="toggle-group">
                         <label class="toggle">
                             <input type="checkbox" id="edit-excluded">
                             <span class="toggle-slider"></span>
-                            <span class="toggle-label">Servisten Hariç Tutuldu</span>
+                            <span class="toggle-label">{{ t['lbl_excluded_svc'] }}</span>
                         </label>
                     </div>
                 </div>
 
                 <div class="form-group" id="exclusion-reason-group" style="display:none;">
-                    <label>Hariç Tutma Nedeni</label>
-                    <input type="text" id="edit-exclusion-reason" placeholder="Neden giriniz...">
+                    <label>{{ t['lbl_reason'] }}</label>
+                    <input type="text" id="edit-exclusion-reason" placeholder="{{ t['ph_reason'] }}">
                 </div>
 
                 <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeModal()">İptal</button>
-                    <button type="submit" class="btn btn-primary">Değişiklikleri Kaydet</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">{{ t['btn_cancel']
+                        }}</button>
+                    <button type="submit" class="btn btn-primary">{{ t['btn_save'] }}</button>
                 </div>
             </form>
         </div>
@@ -186,7 +187,7 @@
                 </div>`,
                 iconSize: [20, 20], iconAnchor: [10, 10]
             })
-        }).addTo(mainMap).bindPopup('<b>Ofis</b>');
+        }).addTo(mainMap).bindPopup('<b>{{ t["office"] }}</b>');
     }
 
     function renderEmployeesOnMap() {
@@ -226,7 +227,7 @@
         } catch (err) {
             console.error('Error loading employees:', err);
             document.getElementById('employees-tbody').innerHTML =
-                '<tr><td colspan="8" class="error">Personeller yüklenirken hata oluştu</td></tr>';
+                '<tr><td colspan="8" class="error">{{ t["msg_err_emp"] }}</td></tr>';
         }
     }
 
@@ -234,7 +235,7 @@
         const tbody = document.getElementById('employees-tbody');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="empty">Personel bulunamadı</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="empty">{{ t["msg_no_emp"] }}</td></tr>';
             return;
         }
 
@@ -248,7 +249,7 @@
 
             <td>
                 <span class="status-badge ${e.excluded ? 'status-excluded' : 'status-active'}">
-                    ${e.excluded ? 'Hariç' : 'Aktif'}
+                    ${e.excluded ? '{{ t["status_excluded"] }}' : '{{ t["status_active"] }}'}
                 </span>
             </td>
             <td>
@@ -284,7 +285,7 @@
         const emp = employees.find(e => e.id === id);
         if (!emp) return;
 
-        document.getElementById('modal-title').textContent = `Düzenle: ${emp.name}`;
+        document.getElementById('modal-title').textContent = `{{ t['modal_edit_title'] }}: ${emp.name}`;
         document.getElementById('edit-employee-id').value = emp.id;
         document.getElementById('edit-excluded').checked = emp.excluded;
         document.getElementById('edit-exclusion-reason').value = emp.exclusion_reason || '';

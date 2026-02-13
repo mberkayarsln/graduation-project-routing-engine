@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Kümeler - Rota Motoru{% endblock %}
-{% block page_title %}Kümeler{% endblock %}
+{% block title %}{{ t['cls_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['cls_title'] }}{% endblock %}
 
 {% block header_actions %}
-<button class="btn btn-primary" onclick="loadClusters()">Yenile</button>
+<button class="btn btn-primary" onclick="loadClusters()">{{ t['btn_refresh'] }}</button>
 {% endblock %}
 
 {% block content %}
@@ -12,12 +12,12 @@
     <div class="clusters-sidebar">
         <div class="card" style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
             <div class="card-header">
-                <h2>Tüm Kümeler</h2>
+                <h2>{{ t['sidebar_all_cls'] }}</h2>
                 <span class="badge" id="cluster-count">0</span>
             </div>
             <div class="card-body" style="overflow-y:auto;flex:1;padding:0;">
                 <div id="clusters-container">
-                    <div class="loading" style="padding:20px;">Kümeler yükleniyor...</div>
+                    <div class="loading" style="padding:20px;">{{ t['msg_loading_cls'] }}</div>
                 </div>
             </div>
         </div>
@@ -25,7 +25,7 @@
 
     <div class="card cluster-map-container">
         <div class="card-header">
-            <h2 id="map-title">Tüm Kümeler</h2>
+            <h2 id="map-title">{{ t['sidebar_all_cls'] }}</h2>
         </div>
         <div id="cluster-map"></div>
     </div>
@@ -138,7 +138,7 @@
                 iconSize: [14, 14],
                 iconAnchor: [7, 7]
             })
-        }).addTo(clusterMap).bindPopup('<b>Ofis</b>');
+        }).addTo(clusterMap).bindPopup('<b>{{ t["office"] }}</b>');
     }
 
     async function loadClusters() {
@@ -150,7 +150,7 @@
             renderAllClustersOnMap();
         } catch (err) {
             console.error('Error loading clusters:', err);
-            document.getElementById('clusters-container').innerHTML = '<div class="error" style="padding:20px;">Kümeler yüklenirken hata oluştu</div>';
+            document.getElementById('clusters-container').innerHTML = '<div class="error" style="padding:20px;">{{ t["msg_no_cls"] }}</div>';
         }
     }
 
@@ -158,7 +158,7 @@
         const container = document.getElementById('clusters-container');
 
         if (clusters.length === 0) {
-            container.innerHTML = '<div class="empty" style="padding:20px;">Küme bulunamadı</div>';
+            container.innerHTML = '<div class="empty" style="padding:20px;">{{ t["msg_no_cls"] }}</div>';
             return;
         }
 
@@ -166,11 +166,11 @@
             <div class="cluster-item" data-index="${i}" onclick="selectCluster(${i})">
                 <div class="cluster-color" style="background:${getClusterColor(c.has_route)};width:12px;height:12px;border-radius:50%;"></div>
                 <div class="cluster-info">
-                    <span class="cluster-name">Küme ${c.id}</span>
-                    <span class="cluster-meta">${c.employee_count} personel <span style="color:var(--border-light); margin:0 4px;">|</span> Bölge ${c.zone_id || '-'}</span>
+                    <span class="cluster-name">{{ t['tbl_cluster'] }} ${c.id}</span>
+                    <span class="cluster-meta">${c.employee_count} {{ t['lbl_employees'] }} <span style="color:var(--border-light); margin:0 4px;">|</span> {{ t['tbl_zone'] }} ${c.zone_id || '-'}</span>
                 </div>
                 <span class="cluster-badge ${c.has_route ? 'has-route' : 'no-route'}">
-                    ${c.has_route ? 'Rota Var' : 'Rota Yok'}
+                    ${c.has_route ? '{{ t["badge_route"] }}' : '{{ t["badge_no_route"] }}'}
                 </span>
             </div>
         `).join('');
@@ -193,7 +193,7 @@
             });
             L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
                 .addTo(currentLayer)
-                .bindPopup(`<b>Küme ${cluster.id}</b><br>${cluster.employee_count} personel<br>${cluster.has_route ? 'Rota var' : 'Rota yok'}`);
+                .bindPopup(`<b>{{ t['tbl_cluster'] }} ${cluster.id}</b><br>${cluster.employee_count} {{ t['lbl_employees'] }}<br>${cluster.has_route ? '{{ t["badge_route"] }}' : '{{ t["badge_no_route"] }}'}`);
         });
 
         if (clusters.length > 0) {
@@ -209,7 +209,7 @@
 
         document.querySelectorAll('.cluster-item').forEach(el => el.classList.remove('selected'));
         document.querySelector(`.cluster-item[data-index="${index}"]`)?.classList.add('selected');
-        document.getElementById('map-title').textContent = `Küme ${cluster.id}`;
+        document.getElementById('map-title').textContent = `{{ t['tbl_cluster'] }} ${cluster.id}`;
 
         if (currentLayer) clusterMap.removeLayer(currentLayer);
         currentLayer = L.layerGroup().addTo(clusterMap);
@@ -226,7 +226,7 @@
             });
             L.marker([cluster.center[0], cluster.center[1]], { icon: centerIcon })
                 .addTo(currentLayer)
-                .bindPopup(`<b>Küme ${cluster.id} Merkezi</b><br>${cluster.employee_count} personel`);
+                .bindPopup(`<b>{{ t['tbl_cluster'] }} ${cluster.id}</b><br>${cluster.employee_count} {{ t['lbl_employees'] }}`);
 
             if (clusterDetails.employees) {
                 const bounds = [[cluster.center[0], cluster.center[1]]];

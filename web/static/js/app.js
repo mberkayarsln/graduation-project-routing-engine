@@ -51,11 +51,15 @@ function formatNumber(num) {
 }
 
 // Format duration
+// Format duration
 function formatDuration(minutes) {
-    if (minutes < 60) return `${Math.round(minutes)} dk`;
+    const lang = document.documentElement.getAttribute('data-lang') || 'tr';
+    const isEn = lang === 'en';
+
+    if (minutes < 60) return `${Math.round(minutes)} ${isEn ? 'min' : 'dk'}`;
     const hours = Math.floor(minutes / 60);
     const mins = Math.round(minutes % 60);
-    return `${hours}sa ${mins}dk`;
+    return `${hours}${isEn ? 'h' : 'sa'} ${mins}${isEn ? 'm' : 'dk'}`;
 }
 
 // Debounce function

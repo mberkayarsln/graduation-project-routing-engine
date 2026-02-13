@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
-{% block title %}Rota Düzenle - Rota Motoru{% endblock %}
-{% block page_title %}Rota Düzenle{% endblock %}
+{% block title %}{{ t['edit_title'] }} - {{ t['app_title'] }}{% endblock %}
+{% block page_title %}{{ t['edit_title'] }}{% endblock %}
 
 {% block head %}
 <!-- Leaflet Routing Machine CSS -->
@@ -104,7 +104,7 @@
 {% endblock %}
 
 {% block header_actions %}
-<a href="/routes" class="btn btn-secondary">Rotalara Dön</a>
+<a href="/routes" class="btn btn-secondary">{{ t['btn_back'] }}</a>
 {% endblock %}
 
 {% block content %}
@@ -114,11 +114,11 @@
         <!-- Route Selection -->
         <div class="card">
             <div class="card-header">
-                <h2>Rota Seçin</h2>
+                <h2>{{ t['panel_select'] }}</h2>
             </div>
             <div class="card-body">
                 <select id="route-select" onchange="loadRouteForEdit()">
-                    <option value="">-- Bir rota seçin --</option>
+                    <option value="">{{ t['opt_select_ph'] }}</option>
                 </select>
             </div>
         </div>
@@ -126,19 +126,19 @@
         <!-- Route Info -->
         <div class="card" id="route-info-panel" style="display:none;">
             <div class="card-header">
-                <h2>Rota Bilgisi</h2>
+                <h2>{{ t['panel_info'] }}</h2>
             </div>
             <div class="card-body">
                 <div class="info-stat">
-                    <span class="info-label">Mesafe</span>
+                    <span class="info-label">{{ t['dtl_distance'] }}</span>
                     <span class="info-value" id="edit-distance">--</span>
                 </div>
                 <div class="info-stat">
-                    <span class="info-label">Süre</span>
+                    <span class="info-label">{{ t['dtl_duration'] }}</span>
                     <span class="info-value" id="edit-duration">--</span>
                 </div>
                 <div class="info-stat">
-                    <span class="info-label">Ara Noktalar</span>
+                    <span class="info-label">{{ t['lbl_waypoints'] }}</span>
                     <span class="info-value" id="edit-waypoints">--</span>
                 </div>
             </div>
@@ -147,17 +147,17 @@
         <!-- Actions -->
         <div class="card" id="actions-panel" style="display:none;">
             <div class="card-header">
-                <h2>İşlemler</h2>
+                <h2>{{ t['panel_actions'] }}</h2>
             </div>
             <div class="card-body">
                 <div class="edit-actions">
-                    <button class="btn btn-secondary btn-block" onclick="addWaypoint()">Ara Nokta Ekle</button>
-                    <button class="btn btn-secondary btn-block" onclick="resetRoute()">Rotayı Sıfırla</button>
-                    <button class="btn btn-success btn-block" onclick="saveRoute()">Değişiklikleri Kaydet</button>
-                    <button class="btn btn-primary btn-block" onclick="exportRoute()">JSON Dışa Aktar</button>
+                    <button class="btn btn-secondary btn-block" onclick="addWaypoint()">{{ t['btn_add_wp'] }}</button>
+                    <button class="btn btn-secondary btn-block" onclick="resetRoute()">{{ t['btn_reset'] }}</button>
+                    <button class="btn btn-success btn-block" onclick="saveRoute()">{{ t['btn_save'] }}</button>
+                    <button class="btn btn-primary btn-block" onclick="exportRoute()">{{ t['btn_export'] }}</button>
                 </div>
                 <div class="help-text">
-                    Rotayı düzenlemek için işaretçileri sürükleyin. Ara nokta eklemek için rota çizgisine tıklayın.
+                    {{ t['help_edit'] }}
                 </div>
             </div>
         </div>
@@ -199,7 +199,7 @@
                 html: '<div style="background:#6366f1;width:14px;height:14px;border-radius:50%;border:2px solid #fff;"></div>',
                 iconSize: [14, 14]
             })
-        }).addTo(editMap).bindPopup('<b>Ofis</b>');
+        }).addTo(editMap).bindPopup('<b>{{ t["office"] }}</b>');
     }
 
     // Load routes list
@@ -212,7 +212,7 @@
             routes.forEach((r, i) => {
                 const option = document.createElement('option');
                 option.value = i;
-                option.textContent = `Rota ${i + 1} - ${r.distance_km} km, ${Math.round(r.duration_min)} dk`;
+                option.textContent = `{{ t['route_name_fmt'].replace('{}', '${i + 1}') }} - ${r.distance_km} {{ t['unit_km'] }}, ${Math.round(r.duration_min)} {{ t['unit_min'] }}`;
                 select.appendChild(option);
             });
         } catch (err) {
