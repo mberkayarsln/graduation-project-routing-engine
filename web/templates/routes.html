@@ -172,6 +172,14 @@
         vertical-align: middle;
     }
 
+    .detail-spinner {
+        width: 24px;
+        height: 24px;
+        border: 3px solid #e6eaf2;
+        border-top-color: var(--accent-primary);
+        margin: 0 auto;
+    }
+
     @keyframes spin {
         to {
             transform: rotate(360deg);
@@ -352,6 +360,10 @@
                 </div>
             </div>
             <div id="details-${i}" class="details-content" style="display:none;">
+                <div class="details-loader" id="loader-${i}" style="display:none;text-align:center;padding:20px;">
+                    <div class="spinner detail-spinner"></div>
+                    <p style="margin-top:10px;font-size:13px;color:var(--text-secondary);">{{ t['loading'] }}</p>
+                </div>
                 <div class="info-grid">
                     <div class="info-item">
                         <span class="info-label">{{ t['dtl_distance'] }}</span>
@@ -364,10 +376,6 @@
                     <div class="info-item">
                         <span class="info-label">{{ t['dtl_stops'] }}</span>
                         <span class="info-value">${r.stop_count}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">{{ t['dtl_bus_stops'] }}</span>
-                        <span class="info-value">${r.bus_stop_count || 0}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">{{ t['dtl_employees'] }}</span>
@@ -504,6 +512,7 @@
 
         // Toggle details panel
         const detailsEl = document.getElementById(`details-${index}`);
+        const loaderEl = document.getElementById(`loader-${index}`);
         const isVisible = detailsEl.style.display !== 'none';
 
         // Hide all details first
@@ -517,6 +526,7 @@
 
         if (!isVisible) {
             detailsEl.style.display = 'block';
+            loaderEl.style.display = 'block';
 
             // Fetch route with bus stops if not already loaded
             const route = routes[index];
@@ -531,7 +541,12 @@
                     }
                 } catch (err) {
                     console.error('Error loading route details:', err);
+                } finally {
+                    loaderEl.style.display = 'none';
                 }
+            } else {
+                // Bus stops already loaded, hide the loader immediately
+                loaderEl.style.display = 'none';
             }
 
             // Add bus stop markers to map if we have them
