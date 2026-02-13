@@ -127,6 +127,13 @@ TRANSLATIONS = {
     'msg_calc_error': {'en': 'Error calculating report.', 'tr': 'Rapor hesaplanırken hata oluştu.'},
     'help_params': {'en': 'Edit values and click "Calculate"', 'tr': 'Değerleri düzenleyip "Hesapla" butonuna basın'},
     'rpt_date': {'en': 'Report Date', 'tr': 'Rapor Tarihi'},
+    'lbl_st_active_emp': {'en': 'Active Employees', 'tr': 'Aktif Personel'},
+    'lbl_st_vehicles': {'en': 'Vehicles', 'tr': 'Arac Sayisi'},
+    'lbl_st_routes': {'en': 'Routes', 'tr': 'Rota Sayisi'},
+    'lbl_st_daily_km': {'en': 'Daily KM', 'tr': 'Gunluk KM'},
+    'lbl_st_monthly_km': {'en': 'Monthly KM', 'tr': 'Aylik KM'},
+    'lang_name_tr': {'en': 'Turkish', 'tr': 'Türkçe'},
+    'lang_name_en': {'en': 'English', 'tr': 'İngilizce'},
     
     # Cost Report Items
     'sect_personnel': {'en': 'Personnel Expenses', 'tr': 'Personel Giderleri'},

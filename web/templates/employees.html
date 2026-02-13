@@ -174,7 +174,7 @@
 
     function initMainMap() {
         mainMap = L.map('employees-map').setView([40.95, 29.2], 11);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
             attribution: '&copy; OpenStreetMap, &copy; CARTO'
         }).addTo(mainMap);
         employeeMarkerLayer = L.layerGroup().addTo(mainMap);
@@ -300,7 +300,7 @@
                 employeeMap.remove();
             }
             employeeMap = L.map('employee-map').setView([emp.lat, emp.lon], 15);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png').addTo(employeeMap);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(employeeMap);
 
             L.marker([emp.lat, emp.lon]).addTo(employeeMap)
                 .bindPopup('Ev Konumu').openPopup();

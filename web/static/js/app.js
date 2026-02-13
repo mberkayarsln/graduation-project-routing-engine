@@ -84,24 +84,61 @@ document.addEventListener('DOMContentLoaded', () => {
             position: fixed;
             bottom: 24px;
             right: 24px;
-            padding: 14px 24px;
-            background: #1a1a2e;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 8px;
-            color: white;
+            padding: 14px 20px;
+            background: #ffffff;
+            border: 1px solid #e6eaf2;
+            border-radius: 12px;
+            color: #2a3547;
             font-size: 14px;
             z-index: 2000;
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s ease;
+            box-shadow: 0 12px 30px rgba(15, 24, 40, 0.12);
         }
         .toast.show {
             transform: translateY(0);
             opacity: 1;
         }
-        .toast-success { border-left: 3px solid #10b981; }
-        .toast-error { border-left: 3px solid #ef4444; }
-        .toast-info { border-left: 3px solid #6366f1; }
+        .toast-success { border-left: 3px solid #13deb9; }
+        .toast-error { border-left: 3px solid #fa896b; }
+        .toast-info { border-left: 3px solid #5d87ff; }
     `;
     document.head.appendChild(style);
+
+    const wrapper = document.getElementById('main-wrapper');
+    const toggle = document.getElementById('sidebarToggle');
+    const collapse = document.getElementById('sidebarCollapse');
+    const backdrop = document.getElementById('sidebarBackdrop');
+
+    function toggleSidebar(open) {
+        if (!wrapper) return;
+        const isDesktop = window.innerWidth >= 992;
+        if (isDesktop) {
+            if (typeof open === 'boolean') {
+                wrapper.classList.toggle('sidebar-collapsed', !open);
+            } else {
+                wrapper.classList.toggle('sidebar-collapsed');
+            }
+            return;
+        }
+
+        if (typeof open === 'boolean') {
+            wrapper.classList.toggle('sidebar-open', open);
+        } else {
+            wrapper.classList.toggle('sidebar-open');
+        }
+    }
+
+    if (toggle) {
+        toggle.addEventListener('click', () => toggleSidebar());
+    }
+
+    if (collapse) {
+        collapse.addEventListener('click', () => toggleSidebar(false));
+    }
+
+    if (backdrop) {
+        backdrop.addEventListener('click', () => toggleSidebar(false));
+    }
 });
