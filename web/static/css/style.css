@@ -793,13 +793,34 @@ body {
 }
 
 .btn-secondary {
-    background-color: #f3f5fb;
-    color: var(--text-secondary);
-    border: 1px solid var(--border-light);
+    background-color: #f3f5fb !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-light) !important;
+    box-shadow: none !important;
 }
 
 .btn-secondary:hover {
-    background-color: var(--bg-hover);
+    background-color: var(--bg-hover) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-light) !important;
+    box-shadow: none !important;
+}
+
+.btn-secondary:focus,
+.btn-secondary:focus-visible {
+    background-color: #f3f5fb !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-light) !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+.btn-secondary:active,
+.btn-secondary.active {
+    background-color: var(--bg-active) !important;
+    color: var(--text-secondary) !important;
+    border: 1px solid var(--border-light) !important;
+    box-shadow: none !important;
 }
 
 .btn-icon {
