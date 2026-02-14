@@ -52,7 +52,7 @@ class Config:
     # =========================================================================
     # Employee Generation
     # =========================================================================
-    NUM_EMPLOYEES: int = 300
+    NUM_EMPLOYEES: int = 500
     NUM_CLUSTERS: int = 20
     
     # =========================================================================
@@ -119,7 +119,7 @@ class Config:
     
     # Load employees from database instead of generating new ones
     # Set to False to generate new random employees each run
-    LOAD_EMPLOYEES_FROM_DB: bool = True
+    LOAD_EMPLOYEES_FROM_DB: bool = False
     
     # Clear all existing data before saving new data (for development/testing)
     TRUNCATE_DATABASE_ON_SAVE: bool = True
