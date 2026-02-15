@@ -12,7 +12,6 @@ TRANSLATIONS = {
     'nav_vehicles': {'en': 'Vehicles', 'tr': 'Araçlar'},
     'nav_cost_report': {'en': 'Cost Report', 'tr': 'Maliyet Raporu'},
     'status_connected': {'en': 'Connected', 'tr': 'Bağlı'},
-    'app_title': {'en': 'Routing Engine', 'tr': 'Rota Motoru'},
     'logout': {'en': 'Logout', 'tr': 'Çıkış'},
 
     # Dashboard

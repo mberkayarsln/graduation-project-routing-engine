@@ -95,9 +95,44 @@ body {
 .page-wrapper.sidebar-collapsed .logo-text,
 .page-wrapper.sidebar-collapsed .hide-menu,
 .page-wrapper.sidebar-collapsed .nav-small-cap,
-.page-wrapper.sidebar-collapsed .sidebar-footer,
 .page-wrapper.sidebar-collapsed .sidebar-close {
     display: none;
+}
+
+.page-wrapper.sidebar-collapsed .sidebar-footer {
+    padding: 16px 0 0;
+    align-items: center;
+}
+
+.page-wrapper.sidebar-collapsed .sidebar-status {
+    display: none;
+}
+
+.page-wrapper.sidebar-collapsed .lang-toggle .lang-code,
+.page-wrapper.sidebar-collapsed .lang-toggle .ti-chevron-down {
+    display: none;
+}
+
+.page-wrapper.sidebar-collapsed .lang-toggle {
+    padding: 8px;
+    justify-content: center;
+}
+
+.page-wrapper.sidebar-collapsed .lang-menu {
+    left: 50%;
+    transform: translateX(-50%);
+    min-width: auto;
+    padding: 6px;
+}
+
+.page-wrapper.sidebar-collapsed .lang-item span:not(.flag) {
+    display: none;
+}
+
+.page-wrapper.sidebar-collapsed .lang-item {
+    padding: 6px;
+    justify-content: center;
+    gap: 0;
 }
 
 .page-wrapper.sidebar-collapsed .sidebar-brand {
