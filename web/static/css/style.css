@@ -196,7 +196,6 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 10px 20px rgba(93, 135, 255, 0.28);
 }
 
 .logo-text {
