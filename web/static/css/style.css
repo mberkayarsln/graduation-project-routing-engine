@@ -668,53 +668,61 @@ body {
    ============================================================================= */
 
 .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
     margin-bottom: 32px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    overflow: hidden;
 }
 
 .stat-card {
-    background-color: var(--bg-card);
-    border: 1px solid var(--border-color);
-    border-radius: 16px;
-    padding: 24px;
+    padding: 16px 20px;
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
     position: relative;
-    overflow: hidden;
-    box-shadow: 0 12px 30px rgba(15, 24, 40, 0.06);
+    border-bottom: 1px solid var(--border-light);
 }
 
-/* Color accents as top borders instead of left borders for a cleaner look */
-.stat-card::after {
+.stat-card:last-child {
+    border-bottom: none;
+}
+
+/* Color accents as left border */
+.stat-card::before {
     content: '';
     position: absolute;
     top: 0;
+    bottom: 0;
     left: 0;
-    right: 0;
-    height: 3px;
+    width: 4px;
     background-color: var(--border-color); /* Default fallback */
 }
 
-.stat-card:nth-child(1)::after { background-color: var(--accent-primary); }
-.stat-card:nth-child(2)::after { background-color: var(--color-success); }
-.stat-card:nth-child(3)::after { background-color: var(--color-warning); }
-.stat-card:nth-child(4)::after { background-color: var(--color-info); }
-.stat-card:nth-child(5)::after { background-color: var(--color-danger); }
-.stat-card:nth-child(6)::after { background-color: var(--color-teal); }
-.stat-card:nth-child(7)::after { background-color: var(--color-pink); }
+.stat-card:nth-child(1)::before { background-color: var(--accent-primary); }
+.stat-card:nth-child(2)::before { background-color: var(--color-success); }
+.stat-card:nth-child(3)::before { background-color: var(--color-warning); }
+.stat-card:nth-child(4)::before { background-color: var(--color-info); }
+.stat-card:nth-child(5)::before { background-color: var(--color-danger); }
+.stat-card:nth-child(6)::before { background-color: var(--color-teal); }
+.stat-card:nth-child(7)::before { background-color: var(--color-pink); }
+.stat-card:nth-child(8)::before { background-color: var(--accent-primary); }
+.stat-card:nth-child(9)::before { background-color: var(--color-success); }
+.stat-card:nth-child(10)::before { background-color: var(--color-info); }
 
 .stat-value {
-    font-size: 22px;
+    font-size: 18px;
     font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 4px;
     line-height: 1.1;
 }
 
 .stat-label {
-    font-size: 13px;
+    font-size: 14px;
     color: var(--text-secondary);
     font-weight: 500;
 }
@@ -1436,7 +1444,8 @@ select:focus {
         color: #1b5e20 !important;
     }
 
-    .stat-card::after {
+    .stat-card::after,
+    .stat-card::before {
         display: none;
     }
 }

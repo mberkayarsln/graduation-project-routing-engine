@@ -188,6 +188,7 @@ TRANSLATIONS = {
     'btn_download_pdf': {'en': 'Download PDF', 'tr': 'PDF İndir'},
     'rpt_header': {'en': 'Personnel Service - Cost Report', 'tr': 'Personel Servis Hizmeti — Maliyet Raporu'},
     'card_params': {'en': 'Cost Parameters', 'tr': 'Maliyet Parametreleri'},
+    'help_params_edit': {'en': 'Edit values and click "Calculate" button', 'tr': 'Değerleri düzenleyip "Hesapla" butonuna basın'},
     'card_breakdown': {'en': 'Cost Breakdown (Monthly)', 'tr': 'Maliyet Kalemleri Detayı (Aylık)'},
     'card_contract': {'en': 'Contract Offer Summary', 'tr': 'İhale Teklif Özeti'},
     'sect_personnel': {'en': 'Personnel Costs', 'tr': 'Personel Giderleri'},
