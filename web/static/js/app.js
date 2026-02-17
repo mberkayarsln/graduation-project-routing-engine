@@ -88,7 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
             background: #ffffff;
             border: 1px solid #e6eaf2;
             border-radius: 12px;
-            color: #2a3547;
+            color: #1F2937;
             font-size: 14px;
             z-index: 2000;
             transform: translateY(100px);
@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
             transform: translateY(0);
             opacity: 1;
         }
-        .toast-success { border-left: 3px solid #13deb9; }
-        .toast-error { border-left: 3px solid #fa896b; }
-        .toast-info { border-left: 3px solid #5d87ff; }
+        .toast-success { border-left: 3px solid #4CAF50; }
+        .toast-error { border-left: 3px solid #F44336; }
+        .toast-info { border-left: 3px solid #4CAF50; }
     `;
     document.head.appendChild(style);
 
