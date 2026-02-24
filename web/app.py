@@ -15,6 +15,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, render_template, jsonify, request, make_response, redirect
+from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,6 +29,7 @@ from translations import get_translations
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
+CORS(app)
 
 # Initialize database and repositories
 db = Database()
@@ -309,6 +311,33 @@ def api_update_employee_pickup(id):
 
         employee_repo.update_pickup_point(id, (float(lat), float(lon)))
         return jsonify({'success': True, 'pickup_point': [float(lat), float(lon)]})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# REST API - Walking Route (OSRM)
+# =============================================================================
+
+@app.route('/api/walking-route')
+def api_walking_route():
+    """Get walking route between two points using OSRM."""
+    try:
+        origin_lat = request.args.get('origin_lat', type=float)
+        origin_lon = request.args.get('origin_lon', type=float)
+        dest_lat = request.args.get('dest_lat', type=float)
+        dest_lon = request.args.get('dest_lon', type=float)
+        
+        if None in (origin_lat, origin_lon, dest_lat, dest_lon):
+            return jsonify({'error': 'origin_lat, origin_lon, dest_lat, dest_lon are required'}), 400
+        
+        from routing import OSRMRouter
+        router = OSRMRouter()
+        result = router.get_route(
+            [(origin_lat, origin_lon), (dest_lat, dest_lon)],
+            profile='foot'
+        )
+        return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -816,6 +845,6 @@ if __name__ == '__main__':
     print("\n" + "="*50)
     print("  Routing Engine Management Dashboard")
     print("="*50)
-    print("  Open: http://localhost:5000")
+    print("  Open: http://localhost:5050")
     print("="*50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, host='0.0.0.0', port=5050)
