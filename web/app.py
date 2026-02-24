@@ -337,6 +337,9 @@ def api_walking_route():
             [(origin_lat, origin_lon), (dest_lat, dest_lon)],
             profile='foot'
         )
+        # Local OSRM only has driving data, so override duration
+        # with walking speed estimate (~5 km/h = 12 min/km)
+        result['duration_min'] = round(result['distance_km'] * 12, 1)
         return jsonify(result)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
