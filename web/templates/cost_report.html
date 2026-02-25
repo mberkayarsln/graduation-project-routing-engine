@@ -2,11 +2,12 @@
 
 {% block title %}{{ t['rpt_title'] }} - {{ t['app_title'] }}{% endblock %}
 {% block page_title %}{{ t['rpt_title'] }}{% endblock %}
+{% block page_subtitle %}{{ t['sub_cost_report'] }}{% endblock %}
 
 {% block header_actions %}
 <div style="display:flex;align-items:center;gap:10px;">
+    <button class="btn btn-outline" onclick="window.print()">{{ t['btn_download_pdf'] }}</button>
     <button class="btn btn-primary" onclick="calculateReport()" id="calc-btn">{{ t['btn_calculate'] }}</button>
-    <button class="btn btn-success" onclick="window.print()">{{ t['btn_download_pdf'] }}</button>
 </div>
 {% endblock %}
 

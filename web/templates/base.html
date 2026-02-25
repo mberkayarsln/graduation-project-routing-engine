@@ -11,12 +11,12 @@
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
 
     <!-- Vendor CSS -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.47.0/tabler-icons.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simplebar@6.2.5/dist/simplebar.min.css">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -25,10 +25,9 @@
 </head>
 
 <body>
-    <div class="page-wrapper" id="main-wrapper" data-layout="vertical" data-navbarbg="skin6" data-sidebartype="full"
-        data-sidebar-position="fixed" data-header-position="fixed">
+    <div class="page-wrapper" id="main-wrapper">
         <aside class="left-sidebar">
-            <div class="scroll-sidebar" data-simplebar>
+            <div class="scroll-sidebar">
                 <div class="sidebar-brand">
                     <a href="/" class="logo">
                         <span class="logo-mark">RE</span>
@@ -50,7 +49,8 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/employees" class="sidebar-link {% if request.endpoint == 'employees_page' %}active{% endif %}">
+                            <a href="/employees"
+                                class="sidebar-link {% if request.endpoint == 'employees_page' %}active{% endif %}">
                                 <span class="aside-icon">
                                     <i class="ti ti-users"></i>
                                 </span>
@@ -58,7 +58,8 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/clusters" class="sidebar-link {% if request.endpoint == 'clusters_page' %}active{% endif %}">
+                            <a href="/clusters"
+                                class="sidebar-link {% if request.endpoint == 'clusters_page' %}active{% endif %}">
                                 <span class="aside-icon">
                                     <i class="ti ti-map-pin"></i>
                                 </span>
@@ -66,7 +67,8 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/routes" class="sidebar-link {% if request.endpoint == 'routes_page' %}active{% endif %}">
+                            <a href="/routes"
+                                class="sidebar-link {% if request.endpoint == 'routes_page' %}active{% endif %}">
                                 <span class="aside-icon">
                                     <i class="ti ti-route"></i>
                                 </span>
@@ -74,17 +76,19 @@
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/vehicles" class="sidebar-link {% if request.endpoint == 'vehicles_page' %}active{% endif %}">
+                            <a href="/vehicles"
+                                class="sidebar-link {% if request.endpoint == 'vehicles_page' %}active{% endif %}">
                                 <span class="aside-icon">
-                                    <i class="ti ti-truck"></i>
+                                    <i class="ti ti-bus"></i>
                                 </span>
                                 <span class="hide-menu">{{ t['nav_vehicles'] }}</span>
                             </a>
                         </li>
                         <li class="sidebar-item">
-                            <a href="/cost-report" class="sidebar-link {% if request.endpoint == 'cost_report_page' %}active{% endif %}">
+                            <a href="/cost-report"
+                                class="sidebar-link {% if request.endpoint == 'cost_report_page' %}active{% endif %}">
                                 <span class="aside-icon">
-                                    <i class="ti ti-report"></i>
+                                    <i class="ti ti-report-money"></i>
                                 </span>
                                 <span class="hide-menu">{{ t['nav_cost_report'] }}</span>
                             </a>
@@ -122,25 +126,17 @@
         <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
         <div class="body-wrapper">
-            <header class="app-header">
-                <nav class="navbar">
-                    <button class="btn-icon nav-icon" id="sidebarToggle" type="button">
-                        <i class="ti ti-menu-2"></i>
-                    </button>
-                    <!-- <div class="navbar-actions">
-                        <div class="status-pill">
-                            <span class="status-dot"></span>
-                            <span>{{ t['status_connected'] }}</span>
-                        </div>
-                    </div> -->
-                </nav>
-            </header>
+            <!-- Mobile hamburger toggle (hidden on desktop) -->
+            <button class="btn-icon nav-icon mobile-toggle d-lg-none" id="sidebarToggle" type="button"
+                style="position:fixed;top:16px;left:16px;z-index:999;">
+                <i class="ti ti-menu-2"></i>
+            </button>
 
             <div class="container-fluid page-container">
                 <div class="page-title-bar">
                     <div class="title-wrap">
                         <h1 class="page-title">{% block page_title %}{{ t['dashboard_title'] }}{% endblock %}</h1>
-                        <p class="page-subtitle">{{ t['app_title'] }}</p>
+                        <p class="page-subtitle">{% block page_subtitle %}{{ t['app_title'] }}{% endblock %}</p>
                     </div>
                     <div class="header-actions">
                         {% block header_actions %}{% endblock %}
@@ -159,7 +155,6 @@
 
     <!-- Vendor JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/simplebar@6.2.5/dist/simplebar.min.js"></script>
 
     <!-- Custom JS -->
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>

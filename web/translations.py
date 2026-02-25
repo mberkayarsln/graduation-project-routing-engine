@@ -203,9 +203,27 @@ TRANSLATIONS = {
     # Common
     'unit_min': {'en': 'min', 'tr': 'dk'},
     'unit_km': {'en': 'km', 'tr': 'km'},
+    'unit_months': {'en': 'months', 'tr': 'ay'},
+    'unit_seats': {'en': 'Seats', 'tr': 'Koltuk'},
     'office': {'en': 'Office', 'tr': 'Ofis'},
     'loading': {'en': 'Loading...', 'tr': 'Yükleniyor...'},
-    'calculating': {'en': 'Calculating...', 'tr': 'Hesaplanıyor...'}
+    'calculating': {'en': 'Calculating...', 'tr': 'Hesaplanıyor...'},
+    'lbl_unassigned': {'en': 'Unassigned', 'tr': 'Atanmamış'},
+    'lbl_capacity_upper': {'en': 'CAPACITY', 'tr': 'KAPASİTE'},
+    'lbl_efficiency': {'en': 'Efficiency', 'tr': 'Verimlilik'},
+    'lbl_ops_summary': {'en': 'OPERATIONS SUMMARY', 'tr': 'OPERASYON ÖZETİ'},
+    'lbl_last_updated': {'en': 'Last updated', 'tr': 'Son güncelleme'},
+    'btn_add_veh': {'en': 'Add Vehicle', 'tr': 'Araç Ekle'},
+    'msg_err_save_veh': {'en': 'Error saving vehicle', 'tr': 'Araç kaydedilirken hata oluştu'},
+    'msg_err_load_veh': {'en': 'Error loading vehicles', 'tr': 'Araçlar yüklenirken hata oluştu'},
+
+    # Page Subtitles
+    'sub_dashboard': {'en': 'Real-time routing overview', 'tr': 'Gerçek zamanlı rotalama genel görünümü'},
+    'sub_employees': {'en': 'Manage employee records and service assignments', 'tr': 'Personel kayıtlarını ve servis atamalarını yönetin'},
+    'sub_vehicles': {'en': 'Manage fleet vehicles and assignments', 'tr': 'Filo araçlarını ve atamalarını yönetin'},
+    'sub_cost_report': {'en': 'Analyze and manage operational expenditures', 'tr': 'Operasyonel harcamaları analiz edin ve yönetin'},
+    'sub_routes': {'en': 'View and edit generated service routes', 'tr': 'Oluşturulan servis rotalarını görüntüleyin ve düzenleyin'},
+    'sub_clusters': {'en': 'View employee groupings and zones', 'tr': 'Personel gruplarını ve bölgeleri görüntüleyin'},
 }
 
 def get_translations(lang_code='tr'):

@@ -2,41 +2,31 @@
 
 {% block title %}{{ t['veh_title'] }} - {{ t['app_title'] }}{% endblock %}
 {% block page_title %}{{ t['veh_title'] }}{% endblock %}
+{% block page_subtitle %}{{ t['sub_vehicles'] }}{% endblock %}
 
 {% block header_actions %}
-<div class="search-box">
-    <input type="text" id="vehicle-search" placeholder="{{ t['search_veh_ph'] }}" onkeyup="filterVehicles()">
-</div>
-<button class="btn btn-primary" onclick="loadVehicles()">{{ t['btn_refresh'] }}</button>
+<button class="btn btn-primary" onclick="openAddVehicleModal()">
+    <i class="ti ti-plus" style="margin-right:6px;"></i>{{ t['btn_add_veh'] }}
+</button>
 {% endblock %}
 
 {% block content %}
-<div class="table-card">
-    <table class="data-table" id="vehicles-table">
-        <thead>
-            <tr>
-                <th>{{ t['tbl_id'] }}</th>
-                <th>{{ t['tbl_type'] }}</th>
-                <th>{{ t['tbl_driver'] }}</th>
-                <th>{{ t['tbl_capacity'] }}</th>
-                <th>{{ t['tbl_actions'] }}</th>
-            </tr>
-        </thead>
-        <tbody id="vehicles-tbody">
-            <tr>
-                <td colspan="5" class="loading">{{ t['msg_loading_veh'] }}</td>
-            </tr>
-        </tbody>
-    </table>
+<div class="vehicles-grid" id="vehicles-grid">
+    <div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">
+        {{ t['msg_loading_veh'] }}
+    </div>
 </div>
 
 <div id="vehicle-modal" class="modal" style="display:none;">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3 id="vehicle-modal-title">{{ t['modal_veh_title'] }}</h3>
-            <button class="modal-close" onclick="closeVehicleModal()">&times;</button>
+    <div class="modal-content" style="max-width:420px;">
+        <div class="modal-header"
+            style="padding:20px 24px;border-bottom:1px solid var(--border-light);display:flex;justify-content:space-between;align-items:center;">
+            <h3 id="vehicle-modal-title" style="font-size:18px;font-weight:700;">{{ t['modal_veh_title'] }}</h3>
+            <button class="btn-icon" onclick="closeVehicleModal()" style="border:none;background:none;">
+                <i class="ti ti-x"></i>
+            </button>
         </div>
-        <div class="modal-body">
+        <div class="modal-body" style="padding:24px;">
             <form id="vehicle-form">
                 <input type="hidden" id="edit-vehicle-id">
 
@@ -50,8 +40,8 @@
                     <input type="number" id="edit-capacity" min="1" max="50">
                 </div>
 
-                <div class="form-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeVehicleModal()">{{ t['btn_cancel']
+                <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px;">
+                    <button type="button" class="btn btn-outline" onclick="closeVehicleModal()">{{ t['btn_cancel']
                         }}</button>
                     <button type="submit" class="btn btn-primary">{{ t['btn_save'] }}</button>
                 </div>
@@ -69,47 +59,43 @@
         try {
             const res = await fetch('/api/vehicles');
             vehicles = await res.json();
-            renderVehicles(vehicles);
+            renderVehicleCards(vehicles);
         } catch (err) {
             console.error('Error loading vehicles:', err);
-            document.getElementById('vehicles-tbody').innerHTML =
-                '<tr><td colspan="5" class="error">Error loading vehicles</td></tr>';
+            document.getElementById('vehicles-grid').innerHTML =
+                '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--color-danger);">' + '{{ t["msg_err_load_veh"] }}' + '</div>';
         }
     }
 
-    function renderVehicles(data) {
-        const tbody = document.getElementById('vehicles-tbody');
+    function renderVehicleCards(data) {
+        const grid = document.getElementById('vehicles-grid');
 
         if (data.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" class="empty">{{ t["msg_no_veh"] }}</td></tr>';
+            grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted);">{{ t["msg_no_veh"] }}</div>';
             return;
         }
 
-        tbody.innerHTML = data.map(v => `
-            <tr onclick="editVehicle(${v.id})" style="cursor:pointer;">
-                <td>${v.id}</td>
-                <td>${v.vehicle_type}</td>
-                <td>${v.driver_name || '<span style="color:var(--text-muted);">Atanmadı</span>'}</td>
-                <td>${v.capacity} yolcu</td>
-                <td>
-                    <button class="btn-icon" onclick="event.stopPropagation(); editVehicle(${v.id})" title="Aracı düzenle">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    </button>
-                </td>
-            </tr>
+        grid.innerHTML = data.map(v => `
+            <div class="vehicle-card" onclick="editVehicle(${v.id})" style="cursor:pointer;">
+                <div class="vehicle-icon">
+                    <i class="ti ti-bus"></i>
+                </div>
+                <div class="vehicle-name">${v.driver_name || '<span style="color:var(--text-muted);">' + '{{ t["lbl_unassigned"] }}' + '</span>'}</div>
+                <div class="vehicle-type">${v.vehicle_type}</div>
+                <div class="vehicle-capacity">
+                    <span>{{ t['lbl_capacity_upper'] }}</span>
+                    <span>${v.capacity} {{ t['unit_seats'] }}</span>
+                </div>
+            </div>
         `).join('');
     }
 
-    function filterVehicles() {
-        const search = document.getElementById('vehicle-search').value.toLowerCase();
-
-        const filtered = vehicles.filter(v => {
-            return v.id.toString().includes(search) ||
-                v.vehicle_type.toLowerCase().includes(search) ||
-                (v.driver_name && v.driver_name.toLowerCase().includes(search));
-        });
-
-        renderVehicles(filtered);
+    function openAddVehicleModal() {
+        document.getElementById('vehicle-modal-title').textContent = '{{ t["btn_add_veh"] }}';
+        document.getElementById('edit-vehicle-id').value = '';
+        document.getElementById('edit-driver-name').value = '';
+        document.getElementById('edit-capacity').value = '';
+        document.getElementById('vehicle-modal').style.display = 'flex';
     }
 
     function editVehicle(id) {
@@ -138,8 +124,11 @@
         };
 
         try {
-            const res = await fetch(`/api/vehicles/${id}`, {
-                method: 'PUT',
+            const url = id ? `/api/vehicles/${id}` : '/api/vehicles';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)
             });
@@ -148,11 +137,11 @@
                 closeVehicleModal();
                 loadVehicles();
             } else {
-                alert('Değişiklikler kaydedilirken hata oluştu');
+                showToast('{{ t["msg_err_save_veh"] }}', 'error');
             }
         } catch (err) {
             console.error('Error:', err);
-            alert('Değişiklikler kaydedilirken hata oluştu');
+            showToast('{{ t["msg_err_save_veh"] }}', 'error');
         }
     });
 

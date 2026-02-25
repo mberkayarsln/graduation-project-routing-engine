@@ -86,15 +86,15 @@ document.addEventListener('DOMContentLoaded', () => {
             right: 24px;
             padding: 14px 20px;
             background: #ffffff;
-            border: 1px solid #e6eaf2;
-            border-radius: 12px;
+            border: 1px solid #E5E7EB;
+            border-radius: 10px;
             color: #1F2937;
             font-size: 14px;
             z-index: 2000;
             transform: translateY(100px);
             opacity: 0;
             transition: all 0.3s ease;
-            box-shadow: 0 12px 30px rgba(15, 24, 40, 0.12);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
         .toast.show {
             transform: translateY(0);

@@ -2,6 +2,7 @@
 
 {% block title %}{{ t['emp_title'] }} - {{ t['app_title'] }}{% endblock %}
 {% block page_title %}{{ t['emp_title'] }}{% endblock %}
+{% block page_subtitle %}{{ t['sub_employees'] }}{% endblock %}
 
 {% block header_actions %}
 <div class="search-box">
@@ -248,7 +249,7 @@
             <td>${e.cluster_id || '-'}</td>
 
             <td>
-                <span class="status-badge ${e.excluded ? 'status-excluded' : 'status-active'}">
+                <span class="badge ${e.excluded ? 'badge-excluded' : 'badge-active'}">
                     ${e.excluded ? '{{ t["status_excluded"] }}' : '{{ t["status_active"] }}'}
                 </span>
             </td>

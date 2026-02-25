@@ -2,6 +2,7 @@
 
 {% block title %}{{ t['dashboard_title'] }} - {{ t['app_title'] }}{% endblock %}
 {% block page_title %}{{ t['dashboard_title'] }}{% endblock %}
+{% block page_subtitle %}{{ t['sub_dashboard'] }}{% endblock %}
 
 {% block header_actions %}
 <div style="display:flex;align-items:center;gap:10px;">
@@ -10,61 +11,119 @@
         <option value="balanced" selected>{{ t['opt_balanced'] }}</option>
         <option value="employee">{{ t['opt_employee'] }}</option>
     </select>
-    <button class="btn btn-success" onclick="generateRoutes()" id="generate-btn">{{ t['btn_generate'] }}</button>
-    <button class="btn btn-primary" onclick="refreshStats()">{{ t['btn_refresh'] }}</button>
+    <button class="btn btn-icon" onclick="refreshStats()" title="{{ t['btn_refresh'] }}">
+        <i class="ti ti-refresh"></i>
+    </button>
+    <button class="btn btn-primary" onclick="generateRoutes()" id="generate-btn">
+        <i class="ti ti-plus" style="margin-right:6px;"></i>{{ t['btn_generate'] }}
+    </button>
 </div>
 {% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">
-        <h2>{{ t['card_overview'] }}</h2>
+<div class="dashboard-layout">
+    <!-- Map (Left) -->
+    <div>
+        <div class="card" style="margin-bottom:0;">
+            <div id="overview-map" style="height: 600px; border-radius: 12px; z-index: 1;"></div>
+        </div>
     </div>
-    <div class="card-body">
-        <div id="overview-map" style="height: 540px; border-radius: 12px;z-index: 1;"></div>
-    </div>
-</div>
 
-<div class="stats-grid">
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_employees'] }}</span>
-        <span class="stat-value" id="stat-employees">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_active_emp'] }}</span>
-        <span class="stat-value" id="stat-active">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">Atanmamış</span>
-        <span class="stat-value" id="stat-unassigned">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">Verimlilik</span>
-        <span class="stat-value" id="stat-efficiency">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_routes'] }}</span>
-        <span class="stat-value" id="stat-routes">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_vehicles'] }}</span>
-        <span class="stat-value" id="stat-vehicles">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['nav_clusters'] }}</span>
-        <span class="stat-value" id="stat-clusters">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['tbl_zone'] }}</span>
-        <span class="stat-value" id="stat-zones">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_distance'] }}</span>
-        <span class="stat-value" id="stat-distance">--</span>
-    </div>
-    <div class="stat-card">
-        <span class="stat-label">{{ t['stat_duration'] }}</span>
-        <span class="stat-value" id="stat-duration">--</span>
+    <!-- Operations Summary (Right) -->
+    <div>
+        <div class="section-label">{{ t['lbl_ops_summary'] }}</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E3F2FD;color:#1565C0;">
+                        <i class="ti ti-users"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_employees'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-employees">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E8F5E9;color:#2E7D32;">
+                        <i class="ti ti-user-check"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_active_emp'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-active">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#FFF3E0;color:#E65100;">
+                        <i class="ti ti-user-exclamation"></i>
+                    </div>
+                    <span class="stat-label">{{ t['lbl_unassigned'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-unassigned">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#F3E5F5;color:#7B1FA2;">
+                        <i class="ti ti-chart-line"></i>
+                    </div>
+                    <span class="stat-label">{{ t['lbl_efficiency'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-efficiency">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E8F5E9;color:#2E7D32;">
+                        <i class="ti ti-route"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_routes'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-routes">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E3F2FD;color:#1565C0;">
+                        <i class="ti ti-bus"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_vehicles'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-vehicles">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#FFF3E0;color:#E65100;">
+                        <i class="ti ti-components"></i>
+                    </div>
+                    <span class="stat-label">{{ t['nav_clusters'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-clusters">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E8F5E9;color:#2E7D32;">
+                        <i class="ti ti-map-pin"></i>
+                    </div>
+                    <span class="stat-label">{{ t['tbl_zone'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-zones">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#E3F2FD;color:#1565C0;">
+                        <i class="ti ti-ruler-measure"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_distance'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-distance">--</span>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <div class="stat-icon" style="background:#F3E5F5;color:#7B1FA2;">
+                        <i class="ti ti-clock"></i>
+                    </div>
+                    <span class="stat-label">{{ t['stat_duration'] }}</span>
+                </div>
+                <span class="stat-value" id="stat-duration">--</span>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}
@@ -104,7 +163,7 @@
             document.getElementById('stat-duration').textContent = Math.round(data.total_duration_min);
             document.getElementById('stat-efficiency').textContent =
                 data.total_employees > 0 ?
-                    ((data.active_employees - data.unassigned_employees) / data.active_employees * 100).toFixed(2) + '%' : '--';
+                    ((data.active_employees - data.unassigned_employees) / data.active_employees * 100).toFixed(1) + '%' : '--';
 
             loadRoutes();
         } catch (err) {
@@ -164,11 +223,11 @@
 
     async function generateRoutes() {
         const btn = document.getElementById('generate-btn');
-        const originalText = btn.textContent;
+        const originalText = btn.innerHTML;
         const mode = document.getElementById('optimization-mode').value;
 
         try {
-            btn.textContent = '{{ t["msg_generating"] }}';
+            btn.innerHTML = '<i class="ti ti-loader" style="margin-right:6px;"></i>{{ t["msg_generating"] }}';
             btn.disabled = true;
 
             const res = await fetch('/api/generate-routes', {
@@ -181,15 +240,15 @@
             if (data.success) {
                 await refreshStats();
                 await loadRoutes();
-                alert('{{ t["msg_gen_success"] }}');
+                showToast('{{ t["msg_gen_success"] }}', 'success');
             } else {
-                alert('Error: ' + (data.error || 'Unknown error'));
+                showToast('Error: ' + (data.error || 'Unknown error'), 'error');
             }
         } catch (err) {
             console.error('Error generating routes:', err);
-            alert('{{ t["msg_gen_error"] }}');
+            showToast('{{ t["msg_gen_error"] }}', 'error');
         } finally {
-            btn.textContent = originalText;
+            btn.innerHTML = originalText;
             btn.disabled = false;
         }
     }
