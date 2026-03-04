@@ -320,6 +320,7 @@ class Vehicle:
         self.route: Route | None = None
         self.departure_time: datetime | None = None
         self.driver_name: str | None = None
+        self.plate_number: str | None = None
     
     def assign_cluster(self, cluster: Cluster) -> None:
         self.cluster = cluster

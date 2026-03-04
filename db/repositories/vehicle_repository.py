@@ -23,6 +23,7 @@ class VehicleRepository(BaseRepository[Vehicle]):
             vehicle_type=row.get("vehicle_type", "Minibus"),
         )
         vehicle.driver_name = row.get("driver_name")
+        vehicle.plate_number = row.get("plate_number")
         return vehicle
     
     def find_all(self, limit: int = 1000) -> list[Vehicle]:

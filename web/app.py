@@ -113,6 +113,125 @@ def routes_edit_page():
 
 
 # =============================================================================
+# REST API - Authentication
+# =============================================================================
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """Authenticate an employee or driver by name/ID.
+    
+    Body: { "role": "employee"|"driver", "identifier": "<name or numeric id>" }
+    Drivers can also be identified by their vehicle plate or driver_name.
+    """
+    try:
+        data = request.json or {}
+        role = data.get('role', 'employee')
+        identifier = str(data.get('identifier', '')).strip()
+
+        if role == 'employee':
+            emp = None
+
+            # Try numeric ID first
+            if identifier.isdigit():
+                emp = employee_repo.find_by_id(int(identifier))
+
+            # Fall back to name search (case-insensitive, partial match)
+            if not emp and identifier:
+                query = """
+                    SELECT id, full_name, zone_id, cluster_id, is_excluded, exclusion_reason,
+                           ST_AsText(home_location) AS home_location_wkt,
+                           ST_AsText(pickup_point)  AS pickup_point_wkt
+                    FROM employees
+                    WHERE LOWER(full_name) LIKE LOWER(%s)
+                      AND deleted_at IS NULL
+                    ORDER BY id
+                    LIMIT 1
+                """
+                rows = db.fetchall(query, (f'%{identifier}%',))
+                if rows:
+                    emp = employee_repo.to_model(rows[0])
+
+            if not emp:
+                return jsonify({'success': False, 'error': 'Employee not found. Try your Employee ID number.'}), 404
+
+            return jsonify({
+                'success': True,
+                'role': 'employee',
+                'id': emp.id,
+                'name': emp.name or f'Employee {emp.id}',
+                'email': f'employee{emp.id}@company.com',
+                'lat': emp.lat,
+                'lon': emp.lon,
+                'cluster_id': emp.cluster_id,
+                'pickup_point': list(emp.pickup_point) if emp.pickup_point else None,
+                'zone_id': emp.zone_id,
+                'excluded': emp.excluded,
+            })
+
+        elif role == 'driver':
+            vehicle = None
+
+            # Try numeric vehicle ID first
+            if identifier.isdigit():
+                vehicle = vehicle_repo.find_by_id(int(identifier))
+
+            # Search by driver_name or plate_number
+            if not vehicle and identifier:
+                all_vehicles = vehicle_repo.find_all()
+                vehicle = next(
+                    (v for v in all_vehicles
+                     if (v.driver_name and identifier.lower() in v.driver_name.lower())),
+                    None
+                )
+                if not vehicle:
+                    # Try plate number
+                    query = """
+                        SELECT id, plate_number, driver_name, driver_phone, capacity, vehicle_type, status
+                        FROM vehicles
+                        WHERE LOWER(plate_number) LIKE LOWER(%s) AND deleted_at IS NULL
+                        LIMIT 1
+                    """
+                    rows = db.fetchall(query, (f'%{identifier}%',))
+                    if rows:
+                        vehicle = vehicle_repo.to_model(rows[0])
+
+            # If still not found but vehicles exist, reject — don't silently pick a wrong vehicle
+            if not vehicle:
+                return jsonify({'success': False, 'error': 'Driver or vehicle not found. Try your Vehicle ID.'}), 404
+
+            # Find the cluster this vehicle is assigned to
+            route_cluster_id = None
+            try:
+                route_row = db.fetchone(
+                    "SELECT cluster_id FROM routes WHERE vehicle_id = %s AND deleted_at IS NULL LIMIT 1",
+                    (vehicle.id,)
+                )
+                if route_row:
+                    route_cluster_id = route_row['cluster_id']
+            except Exception:
+                pass
+
+            return jsonify({
+                'success': True,
+                'role': 'driver',
+                'id': vehicle.id,
+                'name': getattr(vehicle, 'driver_name', None) or f'Driver {vehicle.id}',
+                'email': f'driver{vehicle.id}@company.com',
+                'vehicle_id': vehicle.id,
+                'vehicle_type': vehicle.vehicle_type,
+                'vehicle_capacity': vehicle.capacity,
+                'route_cluster_id': route_cluster_id,
+            })
+
+        return jsonify({'success': False, 'error': 'Invalid role. Use "employee" or "driver".'}), 400
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# =============================================================================
 # REST API - Statistics
 # =============================================================================
 
@@ -588,7 +707,8 @@ def api_vehicles():
             'id': v.id,
             'capacity': v.capacity,
             'vehicle_type': v.vehicle_type,
-            'driver_name': v.driver_name
+            'driver_name': v.driver_name,
+            'plate_number': v.plate_number
         } for v in vehicles])
     except Exception as e:
         return jsonify({'error': str(e)}), 500
