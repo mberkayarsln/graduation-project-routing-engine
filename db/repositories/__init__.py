@@ -4,6 +4,7 @@ from db.repositories.employee_repository import EmployeeRepository
 from db.repositories.cluster_repository import ClusterRepository
 from db.repositories.route_repository import RouteRepository
 from db.repositories.vehicle_repository import VehicleRepository
+from db.repositories.trip_history_repository import TripHistoryRepository
 
 __all__ = [
     "ZoneRepository",
@@ -11,4 +12,5 @@ __all__ = [
     "ClusterRepository",
     "RouteRepository",
     "VehicleRepository",
+    "TripHistoryRepository",
 ]

@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from flask import Flask, render_template, jsonify, request, make_response, redirect
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,13 +24,14 @@ load_dotenv()
 from db.connection import Database
 from db.repositories import (
     ZoneRepository, EmployeeRepository, ClusterRepository,
-    RouteRepository, VehicleRepository
+    RouteRepository, VehicleRepository, TripHistoryRepository
 )
 from translations import get_translations
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
 
 # Initialize database and repositories
 db = Database()
@@ -38,9 +40,12 @@ employee_repo = EmployeeRepository(db)
 cluster_repo = ClusterRepository(db)
 route_repo = RouteRepository(db)
 vehicle_repo = VehicleRepository(db)
+trip_history_repo = TripHistoryRepository(db)
 
 # Cache for transit stops to avoid reloading OSM data on every request
 _transit_stops_cache: list[tuple[float, float]] | None = None
+_transit_stop_names_cache: dict[tuple[float, float], str] | None = None
+_bus_stops_cache: dict[int, list] = {}  # cluster_id -> bus_stops along route
 
 
 def _get_transit_stops_cached() -> list[tuple[float, float]]:
@@ -50,6 +55,29 @@ def _get_transit_stops_cached() -> list[tuple[float, float]]:
         data_gen = DataGenerator()
         _transit_stops_cache = data_gen.get_transit_stops()
     return _transit_stops_cache
+
+
+def _get_transit_stop_names_cached() -> dict[tuple[float, float], str]:
+    global _transit_stop_names_cache
+    if _transit_stop_names_cache is None:
+        from utils import DataGenerator
+        data_gen = DataGenerator()
+        _transit_stop_names_cache = data_gen.get_transit_stops_with_names()
+    return _transit_stop_names_cache
+
+
+def _warm_caches():
+    """Pre-load heavy OSM caches at startup so first request is fast."""
+    import threading
+    def _do():
+        print("[Cache] Pre-warming transit stops...")
+        _get_transit_stops_cached()
+        _get_transit_stop_names_cached()
+        print(f"[Cache] Ready — {len(_transit_stops_cache or [])} stops, {len(_transit_stop_names_cache or {})} named stops")
+    threading.Thread(target=_do, daemon=True).start()
+
+
+_warm_caches()
 
 
 @app.context_processor
@@ -502,28 +530,25 @@ def api_cluster(id):
         
         route = route_repo.find_by_cluster(id)
         
-        # Calculate walking distances using OSRM
+        # Only compute walking distances when explicitly requested (expensive OSRM call)
+        include_walking = request.args.get('include_walking', 'false').lower() == 'true'
         walking_distances = {}
-        employees_with_pickup = [e for e in c.employees if e.pickup_point]
         
-        if employees_with_pickup:
-            try:
-                from routing import OSRMRouter
-                router = OSRMRouter()
-                
-                emp_locs = [(e.lat, e.lon) for e in employees_with_pickup]
-                pickup_locs = [e.pickup_point for e in employees_with_pickup]
-                
-                # Get distance matrix from employees to their pickup points
-                distances = router.get_distance_matrix(emp_locs, pickup_locs, profile='foot')
-                
-                if distances:
-                    for i, emp in enumerate(employees_with_pickup):
-                        # Distance from employee i to their own pickup point (diagonal)
-                        if distances[i] and len(distances[i]) > i:
-                            walking_distances[emp.id] = distances[i][i]
-            except Exception as e:
-                print(f"Error calculating walking distances: {e}")
+        if include_walking:
+            employees_with_pickup = [e for e in c.employees if e.pickup_point]
+            if employees_with_pickup:
+                try:
+                    from routing import OSRMRouter
+                    router = OSRMRouter()
+                    emp_locs = [(e.lat, e.lon) for e in employees_with_pickup]
+                    pickup_locs = [e.pickup_point for e in employees_with_pickup]
+                    distances = router.get_distance_matrix(emp_locs, pickup_locs, profile='foot')
+                    if distances:
+                        for i, emp in enumerate(employees_with_pickup):
+                            if distances[i] and len(distances[i]) > i:
+                                walking_distances[emp.id] = distances[i][i]
+                except Exception as e:
+                    print(f"Error calculating walking distances: {e}")
         
         return jsonify({
             'id': c.id,
@@ -560,13 +585,16 @@ def api_routes():
         for c in clusters:
             route = route_repo.find_by_cluster(c.id)
             if route:
-                # Find all bus stops along this route only if requested
                 bus_stops = []
                 if include_bus_stops:
-                    from config import Config
-                    discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
-                    same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
-                    bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+                    if c.id in _bus_stops_cache:
+                        bus_stops = _bus_stops_cache[c.id]
+                    else:
+                        from config import Config
+                        discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+                        same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+                        bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+                        _bus_stops_cache[c.id] = bus_stops
                 employee_count = employee_repo.count_by_cluster(c.id)
                 
                 routes.append({
@@ -599,12 +627,17 @@ def api_get_route(cluster_id):
         if not route:
             return jsonify({'error': 'Route not found'}), 404
         
-        # Always include bus stops for detail view
-        from config import Config
-        all_transit_stops = _get_transit_stops_cached()
-        discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
-        same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
-        bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+        # Use cached bus stops if available, otherwise compute and cache
+        if cluster_id in _bus_stops_cache:
+            bus_stops = _bus_stops_cache[cluster_id]
+        else:
+            from config import Config
+            all_transit_stops = _get_transit_stops_cached()
+            discovery_buffer = getattr(Config, 'BUS_STOP_DISCOVERY_BUFFER_METERS', 150)
+            same_side = getattr(Config, 'FILTER_STOPS_BY_ROUTE_SIDE', True)
+            bus_stops = route.find_all_stops_along_route(all_transit_stops, buffer_meters=discovery_buffer, same_side_only=same_side)
+            _bus_stops_cache[cluster_id] = bus_stops
+        
         employee_count = employee_repo.count_by_cluster(cluster_id)
         
         return jsonify({
@@ -628,6 +661,9 @@ def api_get_route(cluster_id):
 def api_update_route(cluster_id):
     """Update route stops for a cluster and reassign employee pickup points."""
     try:
+        # Invalidate bus_stops cache for this route
+        _bus_stops_cache.pop(cluster_id, None)
+        
         route = route_repo.find_by_cluster(cluster_id)
         if not route:
             return jsonify({'error': 'Route not found'}), 404
@@ -714,6 +750,24 @@ def api_vehicles():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/vehicles/<int:id>')
+def api_get_vehicle(id):
+    """Get a single vehicle by ID."""
+    try:
+        v = vehicle_repo.find_by_id(id)
+        if not v:
+            return jsonify({'error': 'Vehicle not found'}), 404
+        return jsonify({
+            'id': v.id,
+            'capacity': v.capacity,
+            'vehicle_type': v.vehicle_type,
+            'driver_name': v.driver_name,
+            'plate_number': v.plate_number
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/vehicles/<int:id>', methods=['PUT'])
 def api_update_vehicle(id):
     """Update vehicle."""
@@ -744,31 +798,44 @@ _transit_stop_names_cache: dict[tuple[float, float], str] | None = None
 @app.route('/api/stops/names', methods=['POST'])
 def api_stop_names():
     """Look up bus stop names by coordinates."""
-    global _transit_stop_names_cache
-    
     try:
-        # Load transit stops with names (cached)
-        if _transit_stop_names_cache is None:
-            from utils import DataGenerator
-            data_gen = DataGenerator()
-            _transit_stop_names_cache = data_gen.get_transit_stops_with_names()
+        names_cache = _get_transit_stop_names_cached()
         
         data = request.json
         coordinates = data.get('coordinates', [])  # List of [lat, lon] pairs
         
+        # Build a lookup dict rounded to 4 decimal places (~11m precision)
+        # for fast O(1) matching instead of brute-force iteration
+        if not hasattr(api_stop_names, '_grid'):
+            grid: dict[tuple[int, int], tuple[float, str]] = {}
+            for (stop_lat, stop_lon), name in names_cache.items():
+                # Round to 4 decimals (~11m grid cells)
+                key = (round(stop_lat, 4), round(stop_lon, 4))
+                grid[key] = (abs(stop_lat) + abs(stop_lon), name)
+            api_stop_names._grid = grid
+        
+        grid = api_stop_names._grid
         results = {}
         for coord in coordinates:
             lat, lon = coord[0], coord[1]
-            # Find nearest stop within ~50m (0.0005 degrees)
-            best_name = None
-            best_dist = float('inf')
-            for (stop_lat, stop_lon), name in _transit_stop_names_cache.items():
-                dist = abs(stop_lat - lat) + abs(stop_lon - lon)
-                if dist < 0.0005 and dist < best_dist:
-                    best_dist = dist
-                    best_name = name
-            
             key = f"{lat:.5f},{lon:.5f}"
+            # Check 3x3 neighborhood of grid cells for nearest match
+            best_name = None
+            best_dist = 0.0005  # ~50m threshold
+            rlat, rlon = round(lat, 4), round(lon, 4)
+            for dlat in (-0.0001, 0, 0.0001):
+                for dlon in (-0.0001, 0, 0.0001):
+                    gkey = (round(rlat + dlat, 4), round(rlon + dlon, 4))
+                    if gkey in grid:
+                        slat_slon_sum, name = grid[gkey]
+                        # Approximate distance using the original coords from cache
+                        for (slat, slon), sname in names_cache.items():
+                            if round(slat, 4) == gkey[0] and round(slon, 4) == gkey[1]:
+                                dist = abs(slat - lat) + abs(slon - lon)
+                                if dist < best_dist:
+                                    best_dist = dist
+                                    best_name = sname
+                                break
             results[key] = best_name or 'Bus Stop'
         
         return jsonify(results)
@@ -961,13 +1028,228 @@ def api_cost_report():
 
 
 # =============================================================================
+# Trip History API
+# =============================================================================
+
+@app.route('/api/trips', methods=['POST'])
+def save_trip():
+    """Save a completed trip to the database."""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        trip_id = trip_history_repo.save_trip(
+            route_id=data.get('routeId', 0),
+            driver_id=data.get('driverId'),
+            driver_name=data.get('driverName'),
+            vehicle_id=data.get('vehicleId'),
+            vehicle_plate=data.get('vehiclePlate'),
+            distance_km=data.get('distanceKm', 0),
+            duration_min=data.get('durationMin', 0),
+            total_stops=data.get('totalStops', 0),
+            total_passengers=data.get('totalPassengers', 0),
+            boarded_count=data.get('boardedCount', 0),
+            absent_count=data.get('absentCount', 0),
+            started_at=data.get('startedAt'),
+            ended_at=data.get('endedAt'),
+            status=data.get('status', 'completed'),
+            passengers=data.get('passengers'),
+        )
+        return jsonify({'id': trip_id}), 201
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/trips/driver/<int:driver_id>')
+def get_driver_trips(driver_id: int):
+    """Get trip history for a driver."""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        trips = trip_history_repo.find_by_driver(driver_id, limit=limit)
+        # Convert datetime objects to ISO strings for JSON serialization
+        for t in trips:
+            for key in ('started_at', 'ended_at', 'created_at'):
+                if key in t and t[key] is not None:
+                    t[key] = t[key].isoformat() if hasattr(t[key], 'isoformat') else str(t[key])
+        return jsonify(trips)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/trips/employee/<int:employee_id>')
+def get_employee_trips(employee_id: int):
+    """Get trip history for an employee."""
+    try:
+        limit = request.args.get('limit', 50, type=int)
+        trips = trip_history_repo.find_by_employee(employee_id, limit=limit)
+        for t in trips:
+            for key in ('started_at', 'ended_at', 'created_at'):
+                if key in t and t[key] is not None:
+                    t[key] = t[key].isoformat() if hasattr(t[key], 'isoformat') else str(t[key])
+        return jsonify(trips)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/trips/<int:trip_id>')
+def get_trip_detail(trip_id: int):
+    """Get detailed trip info including passengers."""
+    try:
+        trip = trip_history_repo.find_by_id(trip_id)
+        if not trip:
+            return jsonify({'error': 'Trip not found'}), 404
+        for key in ('started_at', 'ended_at', 'created_at'):
+            if key in trip and trip[key] is not None:
+                trip[key] = trip[key].isoformat() if hasattr(trip[key], 'isoformat') else str(trip[key])
+        return jsonify(trip)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# =============================================================================
+# Real-Time Tracking (Socket.IO)
+# =============================================================================
+
+# In-memory store of active trips: { route_id: { driver_location, trip_active, ... } }
+_active_trips: dict[int, dict] = {}
+
+
+@socketio.on('connect')
+def handle_connect():
+    print(f'[Socket.IO] Client connected: {request.sid}')
+
+
+@socketio.on('disconnect')
+def handle_disconnect():
+    print(f'[Socket.IO] Client disconnected: {request.sid}')
+
+
+@socketio.on('join_route')
+def handle_join_route(data):
+    """Both drivers and passengers join a route room to receive updates."""
+    route_id = data.get('routeId')
+    role = data.get('role', 'employee')
+    if route_id is not None:
+        room = f'route_{route_id}'
+        join_room(room)
+        print(f'[Socket.IO] {role} {request.sid} joined room {room}')
+        # If there's an active trip for this route, send current state immediately
+        if route_id in _active_trips:
+            emit('trip_update', _active_trips[route_id])
+
+
+@socketio.on('leave_route')
+def handle_leave_route(data):
+    route_id = data.get('routeId')
+    if route_id is not None:
+        room = f'route_{route_id}'
+        leave_room(room)
+        print(f'[Socket.IO] {request.sid} left room {room}')
+
+
+@socketio.on('trip_start')
+def handle_trip_start(data):
+    """Driver starts a trip — broadcast to all passengers on this route."""
+    route_id = data.get('routeId')
+    if route_id is None:
+        return
+    trip_data = {
+        'routeId': route_id,
+        'tripActive': True,
+        'latitude': data.get('latitude', 0),
+        'longitude': data.get('longitude', 0),
+        'currentStopIndex': 0,
+        'totalStops': data.get('totalStops', 0),
+        'driverName': data.get('driverName', 'Driver'),
+        'vehiclePlate': data.get('vehiclePlate', ''),
+        'boardingStatuses': {},
+    }
+    _active_trips[route_id] = trip_data
+    room = f'route_{route_id}'
+    emit('trip_started', trip_data, to=room)
+    print(f'[Socket.IO] Trip started on route {route_id}')
+
+
+@socketio.on('location_update')
+def handle_location_update(data):
+    """Driver sends location updates — broadcast to all passengers."""
+    route_id = data.get('routeId')
+    if route_id is None or route_id not in _active_trips:
+        return
+    _active_trips[route_id].update({
+        'latitude': data.get('latitude', 0),
+        'longitude': data.get('longitude', 0),
+        'currentStopIndex': data.get('currentStopIndex', 0),
+    })
+    room = f'route_{route_id}'
+    emit('trip_update', _active_trips[route_id], to=room)
+
+
+@socketio.on('trip_end')
+def handle_trip_end(data):
+    """Driver ends the trip."""
+    route_id = data.get('routeId')
+    if route_id is None:
+        return
+    if route_id in _active_trips:
+        _active_trips[route_id]['tripActive'] = False
+    room = f'route_{route_id}'
+    emit('trip_ended', {'routeId': route_id}, to=room)
+    # Clean up after a short delay to let clients receive the event
+    _active_trips.pop(route_id, None)
+    print(f'[Socket.IO] Trip ended on route {route_id}')
+
+
+@socketio.on('boarding_check')
+def handle_boarding_check(data):
+    """Driver arrived at a stop — notify passengers to confirm boarding."""
+    route_id = data.get('routeId')
+    stop_index = data.get('stopIndex', 0)
+    stop_name = data.get('stopName', 'your stop')
+    if route_id is None:
+        return
+    room = f'route_{route_id}'
+    emit('boarding_check_started', {
+        'routeId': route_id,
+        'stopIndex': stop_index,
+        'stopName': stop_name,
+    }, to=room)
+    print(f'[Socket.IO] Boarding check at stop {stop_index} ("{stop_name}") on route {route_id}')
+
+
+@socketio.on('boarding_update')
+def handle_boarding_update(data):
+    """Passenger confirms/declines boarding — broadcast to driver and other passengers."""
+    route_id = data.get('routeId')
+    employee_id = data.get('employeeId')
+    status = data.get('status')  # 'confirmed' or 'declined'
+    if route_id is None or employee_id is None or status is None:
+        return
+    # Store in active trip data
+    if route_id in _active_trips:
+        _active_trips[route_id].setdefault('boardingStatuses', {})
+        _active_trips[route_id]['boardingStatuses'][str(employee_id)] = status
+    room = f'route_{route_id}'
+    emit('boarding_changed', {
+        'routeId': route_id,
+        'employeeId': employee_id,
+        'status': status,
+    }, to=room)
+    print(f'[Socket.IO] Boarding {status} for employee {employee_id} on route {route_id}')
+
+
+# =============================================================================
 # Run Server
 # =============================================================================
 
 if __name__ == '__main__':
     print("\n" + "="*50)
     print("  Routing Engine Management Dashboard")
+    print("  (with real-time Socket.IO tracking)")
     print("="*50)
     print("  Open: http://localhost:5050")
     print("="*50 + "\n")
-    app.run(debug=True, host='0.0.0.0', port=5050)
+    socketio.run(app, debug=True, host='0.0.0.0', port=5050)
