@@ -14,7 +14,7 @@ import sys
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from flask import Flask, render_template, jsonify, request, make_response, redirect
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from dotenv import load_dotenv
@@ -26,9 +26,12 @@ from db.repositories import (
     ZoneRepository, EmployeeRepository, ClusterRepository,
     RouteRepository, VehicleRepository, TripHistoryRepository
 )
-from translations import get_translations
 
-app = Flask(__name__)
+# Path to React SPA build output
+SPA_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '..', 'routing-engine-admin', 'dist')
+SPA_DIR = os.path.abspath(SPA_DIR)
+
+app = Flask(__name__, static_folder=os.path.join(SPA_DIR, 'assets'), static_url_path='/assets')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 CORS(app)
 socketio = SocketIO(app, cors_allowed_origins='*', async_mode='eventlet')
@@ -80,64 +83,20 @@ def _warm_caches():
 _warm_caches()
 
 
-@app.context_processor
-def inject_translations():
-    """Inject translations and language code into all templates."""
-    lang = request.cookies.get('lang', 'tr')
-    return dict(t=get_translations(lang), lang=lang)
-
-
-@app.route('/set-lang/<lang_code>')
-def set_language(lang_code):
-    """Set the language cookie and redirect back."""
-    if lang_code not in ['en', 'tr']:
-        lang_code = 'tr'
-    
-    # Redirect back to the page the user came from, or dashboard
-    referrer = request.headers.get('Referer', '/')
-    resp = make_response(redirect(referrer))
-    resp.set_cookie('lang', lang_code, max_age=60*60*24*365)  # 1 year
-    return resp
-
-
 # =============================================================================
-# Web Pages
+# SPA Serving - React Admin Panel
 # =============================================================================
 
 @app.route('/')
-def dashboard():
-    """Dashboard home page."""
-    return render_template('dashboard.html')
-
-
 @app.route('/employees')
-def employees_page():
-    """Employee management page."""
-    return render_template('employees.html')
-
-
 @app.route('/routes')
-def routes_page():
-    """Route management page."""
-    return render_template('routes.html')
-
-
-@app.route('/clusters')
-def clusters_page():
-    """Cluster management page."""
-    return render_template('clusters.html')
-
-
-@app.route('/vehicles')
-def vehicles_page():
-    """Vehicle management page."""
-    return render_template('vehicles.html')
-
-
 @app.route('/routes/edit')
-def routes_edit_page():
-    """Route editing page with draggable waypoints."""
-    return render_template('route_edit.html')
+@app.route('/clusters')
+@app.route('/vehicles')
+@app.route('/cost-report')
+def serve_spa(**kwargs):
+    """Serve React SPA index.html for all frontend routes."""
+    return send_from_directory(SPA_DIR, 'index.html')
 
 
 # =============================================================================
@@ -848,12 +807,6 @@ def api_stop_names():
 # =============================================================================
 # REST API - Cost Report
 # =============================================================================
-
-@app.route('/cost-report')
-def cost_report_page():
-    """Cost report page for tender presentations."""
-    return render_template('cost_report.html')
-
 
 @app.route('/api/cost-report')
 def api_cost_report():
